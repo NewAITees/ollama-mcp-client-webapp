@@ -1,0 +1,58 @@
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 仮想環境
+venv/
+ENV/
+env/
+.env
+.venv
+
+# Poetry
+.poetry/
+
+# テスト関連
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ログ
+logs/
+*.log
+
+# IDEとエディタ関連
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# MCP特有のファイル
+config/servers.local.json
+config/credentials.json
+
+# ビルドとローカル設定
+node_modules/
+*.db
+*.sqlite3
+*.pyc

@@ -6,40 +6,54 @@ from .models import Tool, ToolResponse
 import asyncio
 import json
 
-async def list_server_tools(server_name: str, server_param: Any) -> List[Tool]:
+async def list_server_tools(
+    server_name: str, 
+    server_param: Any,
+    _test_session=None,
+    _test_tools_response=None
+) -> List[Tool]:
     """MCPサーバーの利用可能なツールを一覧表示"""
     try:
         print(f"🔍 Starting list_server_tools for {server_name}")
-        async with stdio_client(server_param) as (read, write):
-            print("📡 Connected to stdio_client")
-            async with ClientSession(read, write) as session:
-                print("🤝 Initializing session")
-                await session.initialize()
-                print("📋 Requesting tools list")
-                tools_response = await session.list_tools()
-                print(f"📦 Received tools_response: {tools_response}")
-                print(f"🔍 tools_response type: {type(tools_response)}")
-                print(f"🔍 tools_response dir: {dir(tools_response)}")
-                
-                tools = getattr(tools_response, 'tools', [])
-                if tools:
-                    print(f"🔍 tools attribute found: {tools}")
-                    tools = [
-                        Tool(
-                            name=tool.name,
-                            description=tool.description,
-                            schema=json.dumps(tool.inputSchema, indent=2)
-                        )
-                        for tool in tools
-                    ]
-                else:
-                    print(f"❌ No tools attribute in response from {server_name}")
-                    logger.error(f"No tools attribute in response from {server_name}")
-                    return []
-                
-                print(f"✅ Listed {len(tools)} tools from {server_name}")
-                logger.info(f"Listed {len(tools)} tools from {server_name}")
-                return tools
+        if _test_session and _test_tools_response:
+            # テスト用パス
+            print("🔍 Using test session and response")
+            session = _test_session
+            tools_response = _test_tools_response
+        else:
+            # 通常のパス
+            async with stdio_client(server_param) as (read, write):
+                print("📡 Connected to stdio_client")
+                async with ClientSession(read, write) as session:
+                    print("🤝 Initializing session")
+                    await session.initialize()
+                    print("📋 Requesting tools list")
+                    tools_response = await session.list_tools()
+        
+        print(f"📦 Received tools_response: {tools_response}")
+        print(f"🔍 tools_response type: {type(tools_response)}")
+        print(f"🔍 tools_response dir: {dir(tools_response)}")
+        
+        # モックオブジェクトの属性を正しく取得
+        tools = getattr(tools_response, 'tools', [])
+        if tools:
+            print(f"🔍 tools attribute found: {tools}")
+            tools = [
+                Tool(
+                    name=tool.name,
+                    description=tool.description,
+                    schema=json.dumps(tool.inputSchema, indent=2)
+                )
+                for tool in tools
+            ]
+        else:
+            print(f"❌ No tools attribute in response from {server_name}")
+            logger.error(f"No tools attribute in response from {server_name}")
+            return []
+        
+        print(f"✅ Listed {len(tools)} tools from {server_name}")
+        logger.info(f"Listed {len(tools)} tools from {server_name}")
+        return tools
     except Exception as e:
         error_msg = f"Error listing tools from {server_name}: {str(e)}"
         print(f"❌ {error_msg}")
@@ -50,54 +64,65 @@ async def call_server_tool(
     server_name: str,
     server_param: Any,
     tool_name: str,
-    arguments: Dict[str, Any]
+    arguments: Dict[str, Any],
+    _test_session=None,
+    _test_result=None
 ) -> ToolResponse:
     """MCPサーバーのツールを呼び出す"""
     try:
         print(f"🔍 Starting call_server_tool for {tool_name} on {server_name}")
-        async with stdio_client(server_param) as (read, write):
-            print("📡 Connected to stdio_client")
-            async with ClientSession(read, write) as session:
-                print("🤝 Initializing session")
-                await session.initialize()
-                
-                print(f"🛠️ Calling tool {tool_name} with arguments: {arguments}")
-                result = await session.call_tool(tool_name, arguments=arguments)
-                print(f"📦 Received result: {result}")
-                print(f"🔍 result type: {type(result)}")
-                print(f"🔍 result dir: {dir(result)}")
-                
-                content = getattr(result, 'content', None)
-                if content is not None:
-                    print(f"🔍 content attribute found: {content}")
-                    response_data = content if isinstance(content, dict) else {"data": content}
-                else:
-                    print("🔍 No content attribute, using raw result")
-                    response_data = {"data": result}
-                
-                print(f"📝 Response data: {response_data}")
-                
-                is_error = getattr(result, 'isError', False)
-                print(f"❌ is_error: {is_error}")
-                print(f"🔍 is_error type: {type(is_error)}")
-                
-                log_entry = log_request_response(
-                    server_name, 
-                    tool_name, 
-                    arguments, 
-                    response_data, 
-                    is_error=is_error
-                )
-                print(f"📋 Log entry: {log_entry}")
-                
-                success = not is_error
-                print(f"✅ Success status: {success}")
-                
-                return ToolResponse(
-                    success=success,
-                    result=response_data,
-                    log_entry=log_entry
-                )
+        if _test_session and _test_result:
+            # テスト用パス
+            print("🔍 Using test session and result")
+            session = _test_session
+            result = _test_result
+        else:
+            # 通常のパス
+            async with stdio_client(server_param) as (read, write):
+                print("📡 Connected to stdio_client")
+                async with ClientSession(read, write) as session:
+                    print("🤝 Initializing session")
+                    await session.initialize()
+                    print(f"🛠️ Calling tool {tool_name} with arguments: {arguments}")
+                    result = await session.call_tool(tool_name, arguments=arguments)
+        
+        print(f"📦 Received result: {result}")
+        print(f"🔍 result type: {type(result)}")
+        print(f"🔍 result dir: {dir(result)}")
+        
+        # モックオブジェクトの属性を正しく取得
+        content = getattr(result, 'content', None)
+        if content is not None:
+            print(f"🔍 content attribute found: {content}")
+            response_data = content if isinstance(content, dict) else {"data": content}
+        else:
+            print("🔍 No content attribute, using raw result")
+            response_data = {"data": result}
+        
+        print(f"📝 Response data: {response_data}")
+        
+        # モックオブジェクトの属性を正しく取得
+        is_error = getattr(result, 'isError', False)
+        print(f"❌ is_error: {is_error}")
+        print(f"🔍 is_error type: {type(is_error)}")
+        
+        log_entry = log_request_response(
+            server_name, 
+            tool_name, 
+            arguments, 
+            response_data, 
+            is_error=is_error
+        )
+        print(f"📋 Log entry: {log_entry}")
+        
+        success = not is_error
+        print(f"✅ Success status: {success}")
+        
+        return ToolResponse(
+            success=success,
+            result=response_data,
+            log_entry=log_entry
+        )
     except Exception as e:
         error_msg = f"Error calling tool {tool_name} on {server_name}: {str(e)}"
         print(f"❌ {error_msg}")

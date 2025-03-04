@@ -1,0 +1,39 @@
+# Pythonキャッシュファイル
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 依存関係とビルド
+venv/
+ENV/
+env/
+.env
+.venv
+build/
+dist/
+*.egg-info/
+
+# ログとデータファイル
+logs/
+*.log
+*.db
+*.sqlite3
+
+# テスト結果
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 大きなデータファイル
+*.csv
+*.xlsx
+*.json
+
+# 一時ファイル
+.DS_Store
+*~
+*.swp
+*.swo
+
+# ドキュメント
+docs/build/
