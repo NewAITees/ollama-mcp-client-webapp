@@ -36,9 +36,14 @@ async def list_server_tools(
         
         # モックオブジェクトの属性を正しく取得
         tools = getattr(tools_response, 'tools', [])
-        if tools:
-            print(f"🔍 tools attribute found: {tools}")
-            tools = [
+        if not tools:
+            print(f"❌ No tools attribute in response from {server_name}")
+            logger.error(f"No tools attribute in response from {server_name}")
+            return []
+        
+        print(f"🔍 tools attribute found: {tools}")
+        try:
+            converted_tools = [
                 Tool(
                     name=tool.name,
                     description=tool.description,
@@ -46,14 +51,14 @@ async def list_server_tools(
                 )
                 for tool in tools
             ]
-        else:
-            print(f"❌ No tools attribute in response from {server_name}")
-            logger.error(f"No tools attribute in response from {server_name}")
+            print(f"✅ Converted {len(converted_tools)} tools")
+            return converted_tools
+        except Exception as e:
+            error_msg = f"Error converting tools: {str(e)}"
+            print(f"❌ {error_msg}")
+            logger.error(error_msg)
             return []
-        
-        print(f"✅ Listed {len(tools)} tools from {server_name}")
-        logger.info(f"Listed {len(tools)} tools from {server_name}")
-        return tools
+            
     except Exception as e:
         error_msg = f"Error listing tools from {server_name}: {str(e)}"
         print(f"❌ {error_msg}")

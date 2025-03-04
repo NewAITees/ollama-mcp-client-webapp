@@ -26,7 +26,7 @@ ENV/
 env/
 .env
 .venv
-
+config/
 # Poetry
 .poetry/
 
@@ -34,6 +34,10 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+__pycache__/
+mcp_test_harness/__pycache__/
+tests/__pycache__/
+
 
 # ログ
 logs/
