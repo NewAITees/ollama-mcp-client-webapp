@@ -20,7 +20,7 @@
       },
       "crawl4ai-mcp-server": {
         "command": "python",
-        "args": ["C:/analysis/crawl4ai-mcp-server/src/index.py"],
+        "args": ["/home/persona/analysis/crawl4ai-mcp-server/src/index.py"],
         "env": { 
           "GOOGLE_API_KEY": "config.googleApiKey", 
           "GOOGLE_CSE_ID": "config.googleCseId"

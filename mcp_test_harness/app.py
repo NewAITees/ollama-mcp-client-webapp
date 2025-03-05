@@ -9,23 +9,26 @@ from .models import Tool, ToolResponse
 from unittest.mock import MagicMock
 
 # グローバル変数
-server_config: Optional[Dict[str, Any]] = None
-server_parameters: Optional[Dict[str, Any]] = None
+server_config: Dict[str, Any] = {}
+server_parameters: Dict[str, Any] = {}
+all_tools: Dict[str, List[Tuple[str, str]]] = {}  # サーバー名 -> ツールリスト
 
-async def list_servers() -> List[str]:
-    """利用可能なサーバーの一覧を返す"""
-    if server_parameters is None:
-        logger.warning("server_parameters is None")
-        print("⚠️ server_parameters is None")
+def list_servers() -> List[str]:
+    """利用可能なサーバーの一覧を返す（表示値＝内部値）"""
+    if not server_parameters:
+        logger.warning("server_parameters is empty")
+        print("⚠️ server_parameters is empty")
         return []
+    
     server_list = list(server_parameters.keys())
+    
     logger.info(f"Available servers: {server_list}")
     print(f"📋 Available servers: {server_list}")
     return server_list
 
-async def list_tools(server_name: str) -> List[Tuple[str, str]]:
+def list_tools(server_name: str) -> List[Tuple[str, str]]:
     """サーバーの利用可能なツールを返す"""
-    if not server_name or server_parameters is None:
+    if not server_name or not server_parameters:
         logger.warning("No server name or server parameters available")
         print(f"⚠️ No server name or server parameters available: server_name={server_name}, server_parameters={server_parameters}")
         return []
@@ -36,25 +39,10 @@ async def list_tools(server_name: str) -> List[Tuple[str, str]]:
         logger.warning(f"Received list input, using first element: {server_name}")
         print(f"⚠️ Received list input: {server_name}")
     
-    try:
-        logger.info(f"Listing tools for server: {server_name}")
-        print(f"🔍 Listing tools for server: {server_name}")
-        tools = await list_server_tools(server_name, server_parameters[server_name])
-        logger.info(f"Received tools: {tools}")
-        print(f"📦 Received tools: {tools}")
-        
-        # Gradioのドロップダウン用に変換
-        result = [(f"{tool.name} - {tool.description}", tool.schema) for tool in tools]
-        logger.info(f"Converted tools for dropdown: {result}")
-        print(f"✅ Converted tools for dropdown: {result}")
-        return result
-    except Exception as e:
-        error_msg = f"Error listing tools: {str(e)}"
-        logger.error(error_msg)
-        print(f"❌ {error_msg}")
-        return []
+    # 事前に読み込んだツールリストを返す
+    return all_tools.get(server_name, [])
 
-async def get_tool_schema(server_name: str, tool_dropdown: str) -> str:
+def get_tool_schema(server_name: str, tool_dropdown: str) -> str:
     """ツールのスキーマを取得"""
     if not tool_dropdown:
         logger.warning("Invalid tool dropdown value")
@@ -63,13 +51,12 @@ async def get_tool_schema(server_name: str, tool_dropdown: str) -> str:
     
     try:
         # ドロップダウンの値からスキーマを抽出
-        # 値は "name - description" の形式
         logger.info(f"Tool dropdown value: {tool_dropdown}")
         print(f"🔍 Tool dropdown value: {tool_dropdown}")
         print(f"🔍 Tool dropdown type: {type(tool_dropdown)}")
         
-        # ツールリストから対応するスキーマを探す
-        tools = await list_tools(server_name)
+        # 事前に読み込んだツールリストから対応するスキーマを探す
+        tools = all_tools.get(server_name, [])
         print(f"📦 Available tools: {tools}")
         
         for tool_name, schema in tools:
@@ -87,9 +74,9 @@ async def get_tool_schema(server_name: str, tool_dropdown: str) -> str:
         print(f"❌ {error_msg}")
         return "{}"
 
-async def call_tool(server_name: str, tool_dropdown: Tuple[str, str], args_json: str) -> str:
+def call_tool(server_name: str, tool_dropdown: Tuple[str, str], args_json: str) -> str:
     """ツールを呼び出す"""
-    if not server_name or not tool_dropdown or server_parameters is None:
+    if not server_name or not tool_dropdown or not server_parameters:
         return "サーバーとツールを選択してください"
     
     # ツール名を抽出（"name - description" から "name" を取得）
@@ -99,17 +86,24 @@ async def call_tool(server_name: str, tool_dropdown: Tuple[str, str], args_json:
         # JSON引数をパース
         arguments = json.loads(args_json)
         
-        # ツールを呼び出し
-        result = await call_server_tool(
+        if server_name not in server_parameters:
+            error_msg = f"Server {server_name} not found in parameters"
+            logger.error(error_msg)
+            return f"❌ エラー: {error_msg}"
+        
+        # 非同期関数を同期呼び出し
+        result = asyncio.run(call_server_tool(
             server_name, 
             server_parameters[server_name],
             tool_name,
             arguments
-        )
+        ))
         
         # 結果を整形
         if not isinstance(result, ToolResponse):
-            return f"❌ エラー: 予期しない結果の型です: {type(result)}"
+            error_msg = f"Unexpected result type: {type(result)}"
+            logger.error(error_msg)
+            return f"❌ エラー: {error_msg}"
             
         if result.success:
             return f"✅ 成功:\n\n```json\n{json.dumps(result.result, indent=2, ensure_ascii=False)}\n```"
@@ -117,10 +111,37 @@ async def call_tool(server_name: str, tool_dropdown: Tuple[str, str], args_json:
             return f"❌ エラー: {result.error}\n\n```json\n{json.dumps(result.log_entry, indent=2, ensure_ascii=False)}\n```"
     
     except json.JSONDecodeError:
+        error_msg = "Invalid JSON in arguments"
+        logger.error(error_msg)
         return "❌ エラー: 引数のJSONが無効です"
     except Exception as e:
-        logger.exception("Tool call failed")
+        error_msg = f"Tool call failed: {str(e)}"
+        logger.exception(error_msg)
         return f"❌ エラー: {str(e)}"
+
+def initialize_tools() -> None:
+    """初期化時にすべてのツールを読み込む"""
+    global all_tools
+    
+    try:
+        for server_name in server_parameters.keys():
+            logger.info(f"Loading tools for server: {server_name}")
+            print(f"🔍 Loading tools for server: {server_name}")
+            
+            # 非同期関数を同期呼び出し
+            tools = asyncio.run(list_server_tools(server_name, server_parameters[server_name]))
+            
+            # Gradioのドロップダウン用に変換
+            converted_tools = [(f"{tool.name} - {tool.description}", tool.schema) for tool in tools]
+            
+            all_tools[server_name] = converted_tools
+            logger.info(f"Loaded {len(converted_tools)} tools for {server_name}")
+            print(f"✅ Loaded {len(converted_tools)} tools for {server_name}")
+    except Exception as e:
+        error_msg = f"Error initializing tools: {str(e)}"
+        logger.error(error_msg)
+        print(f"❌ {error_msg}")
+        all_tools = {}
 
 def create_app(test_mode: bool = False) -> gr.Blocks:
     """Gradioアプリケーションを作成"""
@@ -134,12 +155,16 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
         logger.info(f"Created server parameters: {server_parameters}")
         print(f"✅ Loaded server config: {server_config}")
         print(f"✅ Created server parameters: {server_parameters}")
+        
+        # 初期化時にすべてのツールを読み込む
+        initialize_tools()
     except Exception as e:
         error_msg = f"Error loading server config: {str(e)}"
         logger.error(error_msg)
         print(f"❌ {error_msg}")
         server_config = {}
         server_parameters = {}
+        all_tools = {}
 
     with gr.Blocks(title="MCP Test Harness") as app:
         gr.Markdown("# MCPテストハーネス")
@@ -148,13 +173,14 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
         with gr.Row():
             with gr.Column(scale=1):
                 # サーバー・ツール選択
+                server_list = list_servers()  # 同期関数として呼び出し
                 server_dropdown = gr.Dropdown(
                     label="MCPサーバー", 
-                    choices=[], 
+                    choices=server_list,  # 直接リストを設定
                     interactive=True,
-                    allow_custom_value=False,  # カスタム値を許可しない
-                    value=None,  # 明示的に初期値をNoneに設定
-                    type="value"  # 値を直接取得するように設定
+                    allow_custom_value=True,
+                    value=None,
+                    info="利用可能なMCPサーバーを選択してください"
                 )
                 print("🎯 Created server_dropdown component")
                 
@@ -162,8 +188,8 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
                     label="ツール", 
                     choices=[], 
                     interactive=True,
-                    allow_custom_value=False,  # カスタム値を許可しない
-                    value=None  # 明示的に初期値をNoneに設定
+                    allow_custom_value=False,
+                    value=None
                 )
                 print("🎯 Created tool_dropdown component")
                 
@@ -200,7 +226,7 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
                     )
                     clear_log_btn = gr.Button("ログをクリア")
         
-        # イベントハンドラ
+        # サーバー選択時のツールリスト更新
         server_dropdown.change(
             fn=list_tools,
             inputs=[server_dropdown],
@@ -208,6 +234,7 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
         )
         print("🎯 Set up server_dropdown change event handler")
         
+        # ツール選択時のスキーマ更新
         tool_dropdown.change(
             fn=get_tool_schema,
             inputs=[server_dropdown, tool_dropdown],
@@ -215,6 +242,7 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
         )
         print("🎯 Set up tool_dropdown change event handler")
         
+        # ツール実行
         execute_btn.click(
             fn=call_tool,
             inputs=[server_dropdown, tool_dropdown, args_input],
@@ -222,29 +250,13 @@ def create_app(test_mode: bool = False) -> gr.Blocks:
         )
         print("🎯 Set up execute_btn click event handler")
         
+        # ログクリア
         clear_log_btn.click(
             fn=lambda: "",
             inputs=[],
             outputs=[log_output]
         )
         print("🎯 Set up clear_log_btn click event handler")
-        
-        # サーバーリスト更新ボタン
-        refresh_btn = gr.Button("サーバーリストを更新")
-        refresh_btn.click(
-            fn=list_servers,
-            inputs=[],
-            outputs=[server_dropdown]
-        )
-        print("🎯 Set up refresh_btn click event handler")
-        
-        # 初期化
-        app.load(
-            fn=list_servers,
-            outputs=[server_dropdown],
-            show_progress=True  # 進捗を表示
-        )
-        print("🎯 Set up app.load event handler")
     
     return app
 

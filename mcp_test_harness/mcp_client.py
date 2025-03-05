@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from mcp import ClientSession, types
 from mcp.client.stdio import stdio_client
 from .logger import logger, log_request_response
@@ -9,8 +9,8 @@ import json
 async def list_server_tools(
     server_name: str, 
     server_param: Any,
-    _test_session=None,
-    _test_tools_response=None
+    _test_session: Optional[ClientSession] = None,
+    _test_tools_response: Optional[Any] = None
 ) -> List[Tool]:
     """MCPサーバーの利用可能なツールを一覧表示"""
     try:
@@ -43,14 +43,33 @@ async def list_server_tools(
         
         print(f"🔍 tools attribute found: {tools}")
         try:
-            converted_tools = [
-                Tool(
-                    name=tool.name,
-                    description=tool.description,
-                    schema=json.dumps(tool.inputSchema, indent=2)
-                )
-                for tool in tools
-            ]
+            converted_tools = []
+            for tool in tools:
+                try:
+                    # ツールの属性を取得
+                    name = getattr(tool, 'name', None)
+                    description = getattr(tool, 'description', None)
+                    input_schema = getattr(tool, 'inputSchema', None)
+                    
+                    if not all([name, description, input_schema]):
+                        error_msg = f"Missing required attributes in tool: {tool}"
+                        logger.error(error_msg)
+                        print(f"❌ {error_msg}")
+                        continue
+                    
+                    # ツールオブジェクトを作成
+                    converted_tool = Tool(
+                        name=name,
+                        description=description,
+                        schema=json.dumps(input_schema, indent=2)
+                    )
+                    converted_tools.append(converted_tool)
+                except Exception as e:
+                    error_msg = f"Error converting tool {tool}: {str(e)}"
+                    logger.error(error_msg)
+                    print(f"❌ {error_msg}")
+                    continue
+            
             print(f"✅ Converted {len(converted_tools)} tools")
             return converted_tools
         except Exception as e:
@@ -70,8 +89,8 @@ async def call_server_tool(
     server_param: Any,
     tool_name: str,
     arguments: Dict[str, Any],
-    _test_session=None,
-    _test_result=None
+    _test_session: Optional[ClientSession] = None,
+    _test_result: Optional[Any] = None
 ) -> ToolResponse:
     """MCPサーバーのツールを呼び出す"""
     try:
