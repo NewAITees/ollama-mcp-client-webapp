@@ -12,7 +12,7 @@ def convert_windows_path_to_wsl(windows_path: str) -> str:
     
     # C:ドライブの場合
     if windows_path.startswith('C:/'):
-        return f"/home/persona{windows_path[2:]}"
+        return f"/mnt/c{windows_path[2:]}"
     
     # その他のドライブの場合
     if ':' in windows_path:
@@ -60,11 +60,14 @@ def create_server_parameters(config: Dict[str, Any]) -> Dict[str, StdioServerPar
         if path_value is not None:
             env_vars["PATH"] = path_value
         
+        # Windowsネイティブコマンドかどうかをチェック
+        is_windows_native = server_config["command"] in ["node", "cmd", "powershell", "cmd.exe", "powershell.exe"]
+        
         # コマンド引数のパスを変換
         args = server_config.get("args", [])
         converted_args = []
         for arg in args:
-            if isinstance(arg, str) and ('/' in arg or '\\' in arg):
+            if isinstance(arg, str) and ('/' in arg or '\\' in arg) and not is_windows_native:
                 converted_args.append(convert_windows_path_to_wsl(arg))
             else:
                 converted_args.append(arg)

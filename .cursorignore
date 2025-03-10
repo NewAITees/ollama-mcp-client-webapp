@@ -27,7 +27,6 @@ htmlcov/
 # 大きなデータファイル
 *.csv
 *.xlsx
-*.json
 
 # 一時ファイル
 .DS_Store

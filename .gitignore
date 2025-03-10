@@ -61,3 +61,5 @@ node_modules/
 *.sqlite3
 *.pyc
 
+*.json
+config/servers.json
