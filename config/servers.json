@@ -19,8 +19,13 @@
         } 
       },
       "crawl4ai-mcp-server": {
-        "command": "python",
-        "args": ["/home/persona/analysis/crawl4ai-mcp-server/src/index.py"],
+        "command": "wsl.exe",
+        "args": [
+          "-e", 
+          "bash", 
+          "-c", 
+          "cd /home/persona/analysis/crawl4ai-mcp-server && /home/persona/.local/bin/uv run src/index.py"
+        ],
         "env": { 
           "GOOGLE_API_KEY": "config.googleApiKey", 
           "GOOGLE_CSE_ID": "config.googleCseId"
@@ -28,7 +33,7 @@
       },
       "obsidian": {
         "command": "node",
-        "args": ["C:\\analysis\\obsidian-mcp\\build\\main.js", "C:\\obsidian\\VolcanicAsh"]
+        "args": ["C:\\analysis\\obsidian-mcp\\build\\main.js", "/mnt/c/obsidian/VolcanicAsh"]
       },
       "ollama-MCP-server": {
         "command": "wsl.exe",
