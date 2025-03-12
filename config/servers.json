@@ -31,10 +31,7 @@
           "GOOGLE_CSE_ID": "config.googleCseId"
         }
       },
-      "obsidian": {
-        "command": "node",
-        "args": ["C:\\analysis\\obsidian-mcp\\build\\main.js", "/mnt/c/obsidian/VolcanicAsh"]
-      },
+
       "ollama-MCP-server": {
         "command": "wsl.exe",
         "args": [
