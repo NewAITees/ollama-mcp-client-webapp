@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "mcp-test-harness"
+name = "ollama-mcp-client"
 version = "0.1.0"
-description = "A Gradio-based web application for testing MCP servers"
+description = "Ollama MCP Client & Agent Framework"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 
@@ -14,14 +14,16 @@ pydantic = "^2.6.0"
 aiohttp = "^3.11.0"
 nest-asyncio = "^1.6.0"
 packaging = "^24.0"
+python-dotenv = "^1.0.0"
+aiofiles = "^23.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
 pytest-asyncio = "^0.25.0"
 mypy = "^1.8.0"
-# pydantic-mypy = "^0.0.1"
-# types-pytest = "^7.4.0"
-# types-python-multipart = "^0.0.7" 一時的に無効化
+black = "^24.0.0"
+isort = "^5.12.0"
+pre-commit = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core"]

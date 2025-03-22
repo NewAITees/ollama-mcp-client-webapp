@@ -27,6 +27,7 @@ env/
 .env
 .venv
 config/
+
 # Poetry
 .poetry/
 
@@ -36,7 +37,6 @@ config/
 htmlcov/
 __pycache__/
 tests/__pycache__/
-
 
 # ログ
 logs/
