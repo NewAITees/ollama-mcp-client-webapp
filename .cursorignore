@@ -36,3 +36,6 @@ htmlcov/
 
 # ドキュメント
 docs/build/
+
+
+poetry.lock

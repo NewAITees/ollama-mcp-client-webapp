@@ -35,7 +35,6 @@ config/
 .coverage
 htmlcov/
 __pycache__/
-mcp_test_harness/__pycache__/
 tests/__pycache__/
 
 
@@ -63,3 +62,4 @@ node_modules/
 
 *.json
 config/servers.json
+poetry.lock
