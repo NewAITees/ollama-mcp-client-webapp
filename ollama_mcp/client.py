@@ -3,12 +3,14 @@ MCPクライアントのコア実装
 """
 import asyncio
 import json
-from typing import Dict, List, Optional, Any
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Union
 
 from loguru import logger
 
 from ollama_mcp.debug import DebugLogger
 from ollama_mcp.tools.registry import ToolRegistry
+from ollama_mcp.models.multimodal import MultimodalModel
 
 class OllamaMCPClient:
     """
@@ -99,6 +101,56 @@ class OllamaMCPClient:
         response = f"応答: '{query}' に対する回答です。"
         
         self.debug_logger.log(f"Generated response", "info")
+        return response
+    
+    async def process_multimodal_query(self, query: str, image_paths: List[Union[str, Path]]) -> str:
+        """
+        画像を含むクエリを処理
+        
+        Args:
+            query: ユーザーからの入力テキスト
+            image_paths: 画像ファイルのパスのリスト
+            
+        Returns:
+            応答テキスト
+        """
+        if not self.connected:
+            raise RuntimeError("Not connected to an MCP server")
+        
+        self.debug_logger.log(f"Processing multimodal query with {len(image_paths)} images", "info")
+        
+        # マルチモーダルモデルを使用
+        multimodal_model = MultimodalModel(model_name=self.model_name)
+        
+        # 画像付きのクエリを処理
+        response = await multimodal_model.generate_with_images(query, image_paths)
+        
+        self.debug_logger.log("Generated multimodal response", "info")
+        return response
+
+    async def chat_with_images(self, message: str, image_paths: List[Union[str, Path]]) -> str:
+        """
+        画像を含むチャットメッセージを送信
+        
+        Args:
+            message: ユーザーメッセージ
+            image_paths: 画像ファイルのパスのリスト
+            
+        Returns:
+            モデルの応答
+        """
+        if not self.connected:
+            raise RuntimeError("Not connected to an MCP server")
+        
+        self.debug_logger.log(f"Sending chat message with {len(image_paths)} images", "info")
+        
+        # マルチモーダルモデルを使用
+        multimodal_model = MultimodalModel(model_name=self.model_name)
+        
+        # 画像付きのチャットメッセージを送信
+        response = await multimodal_model.chat_with_images(message, image_paths)
+        
+        self.debug_logger.log("Received chat response", "info")
         return response
     
     async def close(self) -> None:

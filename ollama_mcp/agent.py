@@ -1,7 +1,8 @@
 """
 高度なエージェント機能を提供する拡張フレームワーク
 """
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
 
 from ollama_mcp.client import OllamaMCPClient
 
@@ -177,4 +178,77 @@ class OllamaMCPAgent:
         if "エラー" in result or "失敗" in result:
             return "失敗の原因を分析し、次回は異なるアプローチを試みる必要があります。"
         
-        return None 
+        return None
+
+    async def run_with_images(self, task: str, image_paths: List[Union[str, Path]]) -> str:
+        """
+        画像を含むタスクを実行
+        
+        Args:
+            task: 実行するタスク
+            image_paths: 画像ファイルのパスのリスト
+            
+        Returns:
+            タスク実行の結果
+        """
+        if self.memory:
+            self.memory.add_message("user", task)
+        
+        if self.planner:
+            # タスクの計画（画像は計画段階では使用しない）
+            steps = await self.planner.create_plan(task)
+            results = []
+            
+            # 各ステップで画像を使用
+            for step in steps:
+                step_result = await self.execute_step_with_images(step, image_paths)
+                results.append(step_result)
+                
+                # 結果の反省
+                reflection = await self.reflect_on_result(step_result)
+                if reflection:
+                    results.append(f"反省: {reflection}")
+            
+            final_result = "\n".join(results)
+        else:
+            # 計画なしで直接実行
+            final_result = await self.client.process_multimodal_query(task, image_paths)
+        
+        if self.memory:
+            self.memory.add_message("assistant", final_result)
+        
+        return final_result
+
+    async def execute_step_with_images(self, step: str, image_paths: List[Union[str, Path]]) -> str:
+        """
+        画像を含む特定のステップを実行
+        
+        Args:
+            step: 実行するステップ
+            image_paths: 画像ファイルのパスのリスト
+            
+        Returns:
+            ステップ実行の結果
+        """
+        return await self.client.process_multimodal_query(step, image_paths)
+
+    async def chat_with_images(self, message: str, image_paths: List[Union[str, Path]]) -> str:
+        """
+        画像を含むチャットメッセージを送信
+        
+        Args:
+            message: ユーザーメッセージ
+            image_paths: 画像ファイルのパスのリスト
+            
+        Returns:
+            モデルの応答
+        """
+        if self.memory:
+            self.memory.add_message("user", message)
+        
+        response = await self.client.chat_with_images(message, image_paths)
+        
+        if self.memory:
+            self.memory.add_message("assistant", response)
+        
+        return response 

@@ -7,6 +7,7 @@ nest-asyncio>=1.6.0
 packaging>=24.0
 python-dotenv>=1.0.0
 aiofiles>=23.2.0
+pillow>=10.0.0  # 画像処理用
 
 # 開発用依存関係
 pytest>=8.0.0
