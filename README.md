@@ -35,19 +35,22 @@ graph LR
 git clone https://github.com/yourusername/ollama-mcp-client.git
 cd ollama-mcp-client
 
-# 仮想環境を作成して有効化
-uv venv
-source .venv/bin/activate  # Unix/MacOS
-# または
-.venv\Scripts\activate  # Windows
+# poetryをインストール（まだの場合）
+curl -sSL https://install.python-poetry.org | python3 -
 
-# 依存関係をインストール
-uv pip install -r requirements.txt
+# 仮想環境を作成して依存関係をインストール
+poetry install
+
+# 開発用依存関係もインストールする場合
+poetry install --with dev
+
+# 仮想環境を有効化
+poetry shell
 
 # Ollamaが起動していることを確認
 
 # アプリケーションを実行
-uv run app.py
+poetry run app
 ```
 
 その後、ブラウザで `http://localhost:7860` にアクセスしてください。

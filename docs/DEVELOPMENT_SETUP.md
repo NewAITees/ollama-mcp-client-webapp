@@ -6,15 +6,15 @@
 
 開発を始める前に、以下のソフトウェアがインストールされていることを確認してください：
 
-- Python 3.10以上
-- uv（Python依存関係マネージャ）
+- Python 3.11以上
+- Poetry（Python依存関係マネージャ）
 - Ollama
 - Git
 
 ```mermaid
 graph TD
-    A[Python 3.10+] -->|必須| D[開発環境]
-    B[uv] -->|必須| D
+    A[Python 3.11+] -->|必須| D[開発環境]
+    B[Poetry] -->|必須| D
     C[Ollama] -->|必須| D
     E[Git] -->|必須| D
     F[エディタ/IDE] -->|推奨| D
@@ -34,52 +34,17 @@ cd ollama-mcp-client
 ### 2. 開発用仮想環境の作成
 
 ```bash
-# uv を使用して仮想環境を作成
-uv venv
+# poetryをインストール（まだの場合）
+curl -sSL https://install.python-poetry.org | python3 -
 
-# 仮想環境を有効化（Unix/MacOS）
-source .venv/bin/activate
-
-# 仮想環境を有効化（Windows）
-.venv\Scripts\activate
-```
-
-### 3. 開発用依存関係のインストール
-
-```bash
 # 開発用依存関係を含むすべての依存関係をインストール
-uv pip install -e ".[dev]"
+poetry install --with dev
 
-# または requirements-dev.txt からインストール
-uv pip install -r requirements-dev.txt
+# 仮想環境を有効化
+poetry shell
 ```
 
-依存関係ツリー：
-
-```mermaid
-graph TD
-    A[ollama-mcp-client] --> B[必須依存関係]
-    A --> C[開発用依存関係]
-    
-    B --> D[ollama]
-    B --> E[mcp]
-    B --> F[gradio]
-    B --> G[python-dotenv]
-    B --> H[aiofiles]
-    
-    C --> I[pytest]
-    C --> J[pytest-asyncio]
-    C --> K[black]
-    C --> L[isort]
-    C --> M[mypy]
-    C --> N[pytest-cov]
-    
-    style A fill:#bbdefb,stroke:#1976d2
-    style B fill:#c8e6c9,stroke:#4caf50
-    style C fill:#ffecb3,stroke:#ffa000
-```
-
-### 4. Ollamaのセットアップ
+### 3. Ollamaのセットアップ
 
 Ollamaをまだインストールしていない場合は、[Ollama公式サイト](https://ollama.com/download)からダウンロードしてインストールしてください。
 
@@ -91,7 +56,7 @@ ollama pull llama3
 ollama pull mistral
 ```
 
-### 5. 開発用サーバーのセットアップ
+### 4. 開発用サーバーのセットアップ
 
 テスト用MCPサーバーをセットアップします：
 
@@ -101,16 +66,16 @@ git clone https://github.com/example/mcp-server-example.git
 cd mcp-server-example
 
 # 依存関係をインストール
-uv pip install -r requirements.txt
+poetry install
 ```
 
-### 6. プレコミットフックの設定
+### 5. プレコミットフックの設定
 
 コードの品質を保つために、プレコミットフックを設定します：
 
 ```bash
 # プレコミットをインストール
-uv pip install pre-commit
+poetry add --group dev pre-commit
 
 # プレコミットフックを設定
 pre-commit install
@@ -140,8 +105,7 @@ ollama-mcp-client/
 ├── docs/                  # ドキュメント
 ├── .pre-commit-config.yaml # プレコミット設定
 ├── pyproject.toml         # プロジェクト設定
-├── requirements.txt       # 依存関係
-└── requirements-dev.txt   # 開発用依存関係
+└── poetry.lock          # 依存関係のロックファイル
 ```
 
 ## 開発ワークフロー
@@ -158,22 +122,22 @@ ollama-mcp-client/
 3. フォーマットとリンターを実行：
    ```bash
    # コードフォーマット
-   black ollama_mcp/ tests/ examples/
+   poetry run format
    
    # インポート順序の整理
-   isort ollama_mcp/ tests/ examples/
+   poetry run lint
    
    # 型チェック
-   mypy ollama_mcp/
+   poetry run typecheck
    ```
 
 4. テストを実行：
    ```bash
    # 全テスト実行
-   pytest
+   poetry run test
    
    # カバレッジ付きでテスト実行
-   pytest --cov=ollama_mcp
+   poetry run pytest --cov=ollama_mcp
    ```
 
 ### 2. アプリケーションの実行
@@ -182,10 +146,10 @@ ollama-mcp-client/
 
 ```bash
 # メインアプリケーションを実行
-uv run app.py
+poetry run app
 
 # または特定の例を実行
-uv run examples/basic_client.py
+poetry run python examples/basic_client.py
 ```
 
 ## デバッグ
@@ -288,7 +252,7 @@ flowchart TD
 ```bash
 # 仮想環境が有効化されているか確認
 # 依存関係を再インストール
-uv pip install -e .
+poetry install
 ```
 
 ## 貢献の開始

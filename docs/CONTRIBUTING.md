@@ -25,13 +25,13 @@ Ollama MCP Client & Agent プロジェクトへの貢献に興味をお持ちい
 
 ```bash
 # コードフォーマット
-black ollama_mcp/ tests/ examples/
+poetry run format
 
 # インポート順序の整理
-isort ollama_mcp/ tests/ examples/
+poetry run lint
 
 # 静的型チェック
-mypy ollama_mcp/
+poetry run typecheck
 ```
 
 ## ブランチ戦略
@@ -174,3 +174,27 @@ flowchart TD
 - Issueトラッカー: 機能要望やバグ報告
 - Discussions: 一般的な質問や議論
 - Pull Requests: コードレビューと具体的な変更の議論
+
+### 開発環境のセットアップ
+
+1. **環境準備**:
+   ```bash
+   # poetryをインストール（まだの場合）
+   curl -sSL https://install.python-poetry.org | python3 -
+   
+   # 依存関係をインストール
+   poetry install --with dev
+   
+   # 仮想環境を有効化
+   poetry shell
+   ```
+
+2. **プレコミットフックの設定**:
+   ```bash
+   poetry run pre-commit install
+   ```
+
+3. **テストの実行**:
+   ```bash
+   poetry run test
+   ```

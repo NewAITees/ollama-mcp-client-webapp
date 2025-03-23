@@ -1,33 +1,37 @@
-[tool.poetry]
-name = "ollama-mcp-client"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ollama_mcp"
 version = "0.1.0"
 description = "Ollama MCP Client & Agent Framework"
-authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "mcp>=1.3.0",
+    "gradio>=4.0.0",
+    "loguru>=0.7.0",
+    "pydantic>=2.6.0",
+    "aiohttp>=3.11.0",
+    "nest-asyncio>=1.6.0",
+    "packaging>=24.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.2.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-mcp = "^1.3.0"
-gradio = "^4.0.0"
-loguru = "^0.7.0"
-pydantic = "^2.6.0"
-aiohttp = "^3.11.0"
-nest-asyncio = "^1.6.0"
-packaging = "^24.0"
-python-dotenv = "^1.0.0"
-aiofiles = "^23.2.0"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.25.0"
-mypy = "^1.8.0"
-black = "^24.0.0"
-isort = "^5.12.0"
-pre-commit = "^3.5.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.0",
+    "mypy>=1.8.0",
+    "black>=24.0.0",
+    "isort>=5.12.0",
+    "pre-commit>=3.5.0",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
@@ -49,3 +53,18 @@ warn_no_return = true
 warn_unreachable = true
 strict_optional = true
 ignore_missing_imports = true
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.poetry.scripts]
+app = "app:main"
+format = "black ollama_mcp tests examples"
+lint = "isort ollama_mcp tests examples"
+typecheck = "mypy ollama_mcp"
+test = "pytest"
