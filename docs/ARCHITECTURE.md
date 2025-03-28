@@ -4,7 +4,7 @@
 
 ## システム概要
 
-Ollama MCP Client & Agent は、Model Context Protocol (MCP) サーバーと Ollama の LLM 機能を統合し、拡張可能なエージェントフレームワークを提供するシステムです。
+Ollama MCP Client & Agent は、Model Context Protocol (MCP) サーバーと Agno フレームワークを統合し、マルチモーダル対応の拡張可能なエージェントフレームワークを提供するシステムです。
 
 ```mermaid
 graph TB
@@ -14,35 +14,43 @@ graph TB
     
     subgraph "Ollama MCP Client"
         Client[MCP クライアントコア]
-        Model[Ollama モデル管理]
+        AgnoAgent[Agno エージェント]
         Tools[ツール実行エンジン]
         Debug[デバッグモジュール]
-        Agent[エージェントフレームワーク]
+        Memory[メモリ管理]
+        Knowledge[知識ベース]
+        Multimodal[マルチモーダル処理]
     end
     
     subgraph "外部システム"
         MCP[MCP サーバー]
-        Ollama[Ollama]
+        Models[AI モデル]
     end
     
     UI <--> Client
     UI <--> Debug
-    UI <--> Agent
+    UI <--> AgnoAgent
     
     Client <--> MCP
-    Model <--> Ollama
-    Client <--> Model
+    AgnoAgent <--> Models
+    Client <--> AgnoAgent
     Client <--> Tools
-    Tools <--> Agent
+    Tools <--> AgnoAgent
     Debug <--> Client
     Debug <--> Tools
-    Debug <--> Agent
+    Debug <--> AgnoAgent
+    
+    AgnoAgent <--> Memory
+    AgnoAgent <--> Knowledge
+    AgnoAgent <--> Multimodal
     
     style Client fill:#bbdefb,stroke:#1976d2
-    style Model fill:#c8e6c9,stroke:#4caf50
+    style AgnoAgent fill:#c8e6c9,stroke:#4caf50
     style Tools fill:#ffecb3,stroke:#ffa000
     style Debug fill:#e1bee7,stroke:#8e24aa
-    style Agent fill:#ffcdd2,stroke:#e53935
+    style Memory fill:#ffcdd2,stroke:#e53935
+    style Knowledge fill:#d1c4e9,stroke:#512da8
+    style Multimodal fill:#b2dfdb,stroke:#00796b
 ```
 
 ## 主要コンポーネント
@@ -55,23 +63,43 @@ MCP プロトコルに準拠した通信を担当するコンポーネントで�
 - **Message Handler**: プロトコルメッセージの処理
 - **Tool Registry**: 利用可能なツールの登録と管理
 
-### 2. Ollama モデル管理
+### 2. Agno エージェント
 
-Ollama LLM モデルとの対話を管理するコンポーネントです。
+Agno フレームワークを使用したエージェント機能を提供するコンポーネントです。
 
-- **Model Loader**: モデルのロードと切り替え
-- **Context Manager**: プロンプトとコンテキストの管理
-- **Response Parser**: モデル出力の解析
+- **Agent Manager**: エージェントの作成と管理
+- **Model Integration**: 各種AIモデルとの統合
+- **Tool Execution**: ツールの実行と結果処理
+- **Multimodal Processing**: テキスト、画像、音声、動画の処理
 
-### 3. ツール実行エンジン
+### 3. メモリ管理
 
-ツールの定義、呼び出し、結果処理を担当するコンポーネントです。
+エージェントのメモリと状態を管理するコンポーネントです。
 
-- **Tool Executor**: ツールコールの実行
-- **Result Formatter**: 結果の整形と変換
-- **Schema Validator**: ツール入出力の検証
+- **Session Memory**: 会話セッションの管理
+- **State Manager**: エージェント状態の保持
+- **Context Handler**: コンテキスト情報の管理
+- **Database Integration**: 永続化ストレージとの連携
 
-### 4. デバッグモジュール
+### 4. 知識ベース
+
+エージェントの知識を管理するコンポーネントです。
+
+- **Vector Store**: ベクトルデータベースの管理
+- **Document Processor**: ドキュメントの処理と保存
+- **Search Engine**: 関連情報の検索
+- **Knowledge Update**: 知識の更新と維持
+
+### 5. マルチモーダル処理
+
+各種メディアの処理を担当するコンポーネントです。
+
+- **Image Processor**: 画像処理と分析
+- **Audio Handler**: 音声処理と変換
+- **Video Manager**: 動画処理と解析
+- **Media Integration**: マルチメディアの統合
+
+### 6. デバッグモジュール
 
 詳細なロギングと問題診断機能を提供するコンポーネントです。
 
@@ -79,16 +107,9 @@ Ollama LLM モデルとの対話を管理するコンポーネントです。
 - **Message Inspector**: 通信メッセージの検査
 - **Tracer**: ツールコールと実行の追跡
 - **Error Analyzer**: エラーパターンの分析
+- **Performance Monitor**: パフォーマンスの監視と分析
 
-### 5. エージェントフレームワーク
-
-高度なエージェント機能を提供する拡張コンポーネントです。
-
-- **Planning Engine**: タスク分解と計画
-- **Memory Manager**: コンテキストと状態の管理
-- **Plugin System**: 機能拡張のためのプラグイン基盤
-
-### 6. Gradio Web UI
+### 7. Gradio Web UI
 
 ユーザーインターフェースを提供するコンポーネントです。
 
@@ -96,6 +117,8 @@ Ollama LLM モデルとの対話を管理するコンポーネントです。
 - **Debug View**: デバッグ情報の可視化
 - **Settings Panel**: 構成管理
 - **Tool Editor**: ツール定義の編集
+- **Media Upload**: マルチメディアのアップロード
+- **Performance Dashboard**: パフォーマンス指標の表示
 
 ## データフロー
 
@@ -104,24 +127,29 @@ sequenceDiagram
     participant User as ユーザー
     participant UI as Gradio UI
     participant Client as MCPクライアント
-    participant Model as Ollamaモデル
+    participant Agent as Agnoエージェント
+    participant Memory as メモリ管理
+    participant Knowledge as 知識ベース
     participant Tools as ツール実行エンジン
     participant MCP as MCPサーバー
     
     User->>UI: クエリ入力
     UI->>Client: クエリ送信
-    Client->>Model: プロンプト生成
-    Model->>Client: ツールコール応答
+    Client->>Agent: タスク委譲
     
-    alt ツールコールあり
-        Client->>Tools: ツール実行リクエスト
-        Tools->>MCP: ツールコール送信
-        MCP->>Tools: ツール実行結果
-        Tools->>Client: 結果返却
-        Client->>Model: 結果を含むプロンプト
-        Model->>Client: 最終応答
-    end
+    Agent->>Memory: コンテキスト取得
+    Memory-->>Agent: コンテキスト返却
     
+    Agent->>Knowledge: 関連情報検索
+    Knowledge-->>Agent: 情報返却
+    
+    Agent->>Tools: ツール実行リクエスト
+    Tools->>MCP: ツールコール送信
+    MCP->>Tools: ツール実行結果
+    Tools->>Agent: 結果返却
+    
+    Agent->>Memory: コンテキスト更新
+    Agent->>Client: 最終応答
     Client->>UI: 応答表示
     UI->>User: 結果提示
 ```
@@ -162,12 +190,13 @@ graph TD
 | コンポーネント | 技術 | 選定理由 |
 |----------------|------|----------|
 | バックエンド言語 | Python 3.10 | 機械学習ライブラリとの広範な互換性、asyncio での非同期処理サポート |
+| エージェントフレームワーク | Agno | 軽量で高速、マルチモーダル対応、モデル非依存の設計 |
 | MCP クライアント | 純正 Python | MCP プロトコルとの直接統合、柔軟性の確保 |
-| LLM インターフェース | Ollama | ローカル実行可能な多様なモデルの提供、API の容易さ |
 | ウェブ UI | Gradio | 迅速な UI 開発、ML プロジェクトとの相性の良さ、コンポーネント豊富 |
 | 依存関係管理 | uv | 高速なパッケージインストール、仮想環境管理の容易さ |
 | 非同期処理 | asyncio | 効率的な I/O 処理、複数の接続とリクエストの並行処理 |
 | テスト | pytest | 豊富なテスト機能、asyncio 対応のテストサポート |
+| ロギング | loguru | 構造化ログ、非同期サポート、使いやすいAPI |
 
 ## アーキテクチャの原則
 
@@ -176,5 +205,7 @@ graph TD
 3. **透明性**: デバッグのために内部動作を可視化する仕組み
 4. **使いやすさ**: 開発者と一般ユーザーの両方にとって直感的なインターフェース
 5. **堅牢性**: エラー処理と回復メカニズムの組み込み
+6. **パフォーマンス**: 高速な処理と効率的なリソース利用
+7. **マルチモーダル**: 各種メディアの効率的な処理と統合
 
-このアーキテクチャにより、MCPサーバーとの連携問題を効率的にデバッグしながら、エージェント機能を拡張していくことが可能になります。
+このアーキテクチャにより、MCPサーバーとAgnoフレームワークを効率的に統合し、高度なマルチモーダルエージェント機能を提供することが可能になります。

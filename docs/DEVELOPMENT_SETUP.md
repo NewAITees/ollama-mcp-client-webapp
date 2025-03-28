@@ -8,15 +8,17 @@
 
 - Python 3.11以上
 - Poetry（Python依存関係マネージャ）
-- Ollama
 - Git
+- 必要に応じて：
+  - OpenAI API キー（OpenAIモデルを使用する場合）
+  - その他のAIモデルプロバイダーのAPI キー
 
 ```mermaid
 graph TD
     A[Python 3.11+] -->|必須| D[開発環境]
     B[Poetry] -->|必須| D
-    C[Ollama] -->|必須| D
-    E[Git] -->|必須| D
+    C[Git] -->|必須| D
+    E[API Keys] -->|オプション| D
     F[エディタ/IDE] -->|推奨| D
     
     style D fill:#d4f1f9,stroke:#0077b6
@@ -40,20 +42,25 @@ curl -sSL https://install.python-poetry.org | python3 -
 # 開発用依存関係を含むすべての依存関係をインストール
 poetry install --with dev
 
+# Agnoと関連パッケージをインストール
+poetry add agno mcp gradio loguru
+
 # 仮想環境を有効化
 poetry shell
 ```
 
-### 3. Ollamaのセットアップ
+### 3. 環境変数の設定
 
-Ollamaをまだインストールしていない場合は、[Ollama公式サイト](https://ollama.com/download)からダウンロードしてインストールしてください。
-
-必要なモデルをダウンロード：
+`.env`ファイルを作成し、必要な環境変数を設定します：
 
 ```bash
-# 基本モデルをプルする
-ollama pull llama3
-ollama pull mistral
+# .envファイルを作成
+touch .env
+
+# 以下の内容を追加
+AGNO_TELEMETRY=false  # テレメトリを無効化する場合
+OPENAI_API_KEY=your_key_here  # OpenAIモデルを使用する場合
+# その他のAPI キー
 ```
 
 ### 4. 開発用サーバーのセットアップ
@@ -86,26 +93,37 @@ pre-commit install
 プロジェクトのフォルダ構成は以下の通りです：
 
 ```
-ollama-mcp-client/
-├── app.py                 # メインアプリケーションエントリーポイント
-├── ollama_mcp/            # メインパッケージ
+ollama_mcp/
+├── __init__.py
+├── agno_integration.py      # Agno統合モジュール
+├── agno_multimodal.py      # マルチモーダル機能
+├── debug.py                # デバッグモジュール
+├── tools/                  # ツール定義と実行
 │   ├── __init__.py
-│   ├── client.py          # MCPクライアント実装
-│   ├── agent.py           # エージェントフレームワーク
-│   ├── debug.py           # デバッグユーティリティ
-│   ├── tools.py           # ツール定義と実行
-│   ├── models.py          # モデル管理
-│   └── ui/                # Gradio UI
-│       ├── __init__.py
-│       ├── app.py
-│       ├── components.py
-│       └── pages/
-├── examples/              # 使用例
-├── tests/                 # テストコード
-├── docs/                  # ドキュメント
-├── .pre-commit-config.yaml # プレコミット設定
-├── pyproject.toml         # プロジェクト設定
-└── poetry.lock          # 依存関係のロックファイル
+│   ├── base.py
+│   ├── registry.py
+│   └── builtin.py
+├── models/                 # モデル管理
+│   ├── __init__.py
+│   ├── base.py
+│   └── utils.py
+├── memory/                 # メモリ管理
+│   ├── __init__.py
+│   ├── session.py
+│   └── state.py
+├── knowledge/             # 知識ベース
+│   ├── __init__.py
+│   ├── vector_store.py
+│   └── document.py
+├── ui/                    # Gradio UI
+│   ├── __init__.py
+│   ├── app.py
+│   ├── components.py
+│   └── pages/
+└── utils/                 # ユーティリティ
+    ├── __init__.py
+    ├── async_utils.py
+    └── json_utils.py
 ```
 
 ## 開発ワークフロー
@@ -149,7 +167,7 @@ ollama-mcp-client/
 poetry run app
 
 # または特定の例を実行
-poetry run python examples/basic_client.py
+poetry run python examples/basic_agent.py
 ```
 
 ## デバッグ
@@ -170,7 +188,8 @@ VSCode を使用している場合は、次の `.vscode/launch.json` 設定を�
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}",
+                "AGNO_TELEMETRY": "false"
             }
         },
         {
@@ -181,7 +200,8 @@ VSCode を使用している場合は、次の `.vscode/launch.json` 設定を�
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}",
+                "AGNO_TELEMETRY": "false"
             }
         }
     ]
@@ -194,46 +214,23 @@ VSCode を使用している場合は、次の `.vscode/launch.json` 設定を�
 
 ```mermaid
 flowchart TD
-    A[問題が発生] --> B{Ollamaが実行中?}
-    B -->|いいえ| C[Ollamaを起動する]
-    B -->|はい| D{MCPサーバーが実行中?}
-    D -->|いいえ| E[MCPサーバーを起動する]
-    D -->|はい| F{環境変数が設定済み?}
-    F -->|いいえ| G[.env ファイルを確認する]
-    F -->|はい| H{依存関係の問題?}
-    H -->|はい| I[依存関係を再インストールする]
-    H -->|いいえ| J{ログで詳細を確認}
+    A[問題が発生] --> B{MCPサーバーが実行中?}
+    B -->|いいえ| C[MCPサーバーを起動する]
+    B -->|はい| D{環境変数が設定済み?}
+    D -->|いいえ| E[.env ファイルを確認する]
+    D -->|はい| F{依存関係の問題?}
+    F -->|はい| G[依存関係を再インストールする]
+    F -->|いいえ| H{ログで詳細を確認}
     
-    C --> K[再テスト]
-    E --> K
-    G --> K
-    I --> K
-    J --> L[Issueを開く]
+    C --> I[再テスト]
+    E --> I
+    G --> I
+    H --> J[Issueを開く]
     
     style A fill:#ffcdd2,stroke:#c62828
-    style K fill:#c8e6c9,stroke:#2e7d32
-    style L fill:#bbdefb,stroke:#1976d2
+    style I fill:#c8e6c9,stroke:#2e7d32
+    style J fill:#bbdefb,stroke:#1976d2
 ```
-
-#### Ollamaの問題
-
-**症状**: `Failed to connect to Ollama server` エラーが発生する
-
-**解決策**:
-1. Ollamaが実行中か確認：
-   ```bash
-   # プロセスを確認
-   ps aux | grep ollama
-   
-   # 必要に応じて起動
-   ollama serve
-   ```
-
-2. Ollamaの動作を確認：
-   ```bash
-   # 簡単なモデル呼び出しでテスト
-   ollama run llama3 "hello"
-   ```
 
 #### MCPサーバーの問題
 
@@ -253,10 +250,39 @@ flowchart TD
 # 仮想環境が有効化されているか確認
 # 依存関係を再インストール
 poetry install
+
+# Agnoと関連パッケージを再インストール
+poetry add agno mcp gradio loguru
 ```
 
-## 貢献の開始
+#### Agno関連の問題
 
-これで開発環境のセットアップが完了しました。貢献を始める前に[CONTRIBUTING.md](CONTRIBUTING.md)を確認し、プロジェクトのコード規約とワークフローを理解してください。
+**症状**: Agnoエージェントの初期化や実行でエラーが発生する
+
+**解決策**:
+1. 環境変数の確認：
+   ```bash
+   # .envファイルの内容を確認
+   cat .env
+   
+   # 必要な環境変数が設定されているか確認
+   echo $AGNO_TELEMETRY
+   echo $OPENAI_API_KEY
+   ```
+
+2. Agnoのバージョン確認：
+   ```bash
+   # インストールされているバージョンを確認
+   poetry show agno
+   
+   # 最新バージョンにアップデート
+   poetry update agno
+   ```
+
+## 参考リンク
+
+- [Agno公式ドキュメント](https://docs.agno.com)
+- [MCPプロトコル仕様](https://mcp-protocol.org)
+- [Gradioドキュメント](https://gradio.app/docs)
 
 質問がある場合は、Issueトラッカーで質問するか、メインリポジトリのDiscussionsセクションを利用してください。
