@@ -30,7 +30,7 @@ graph TD
     C --> D[マルチモーダル処理]
     C --> E[メモリ管理]
     C --> F[知識ベース]
-    B <--> G[Gradio UI]
+    B <--> G[AgentUI]
     
     style A fill:#bbdefb,stroke:#1976d2
     style B fill:#c8e6c9,stroke:#4caf50
@@ -47,10 +47,10 @@ graph TD
 
 ```bash
 # poetryを使用してAgnoと関連パッケージをインストール
-poetry add agno mcp gradio loguru
+poetry install
 
 # または直接pipを使用
-pip install agno mcp gradio loguru
+pip install -e .
 ```
 
 2. 環境変数の設定
@@ -60,104 +60,133 @@ pip install agno mcp gradio loguru
 AGNO_TELEMETRY=false  # テレメトリを無効化する場合
 ```
 
-3. プロジェクト構造の更新
-
-```
-ollama_mcp/
-├── __init__.py
-├── agno_integration.py      # Agno統合モジュール
-├── agno_multimodal.py      # マルチモーダル機能
-├── debug.py                # デバッグモジュール
-├── ui/                     # UIコンポーネント
-└── utils/                  # ユーティリティ
-```
-
 ## 基本的な使用方法
 
-### 1. エージェントの作成
+### アプリケーション起動方法
 
-```python
-from agno.agent import Agent
-from agno.models.openai import OpenAIChat
-from mcp.tools import MCPTools
+OllamaMCPアプリケーションを起動するには、以下のコマンドを使用します：
 
-# MCPツールを使用するエージェントを作成
-agent = Agent(
-    model=OpenAIChat(id="gpt-4"),
-    tools=[MCPTools()],
-    markdown=True
-)
+```bash
+# コマンドラインから起動する場合（最も簡単な方法）
+poetry run app
+
+# サーバーパスを指定して起動
+poetry run app --server path/to/mcp_server.py
+
+# モデルを指定して起動
+poetry run app --model llama3
+
+# デバッグレベルを指定して起動
+poetry run app --debug debug
+
+# UIポートを指定して起動
+poetry run app --port 8080
+
+# 共有リンクを生成して起動
+poetry run app --share
+
+# すべてのオプションを組み合わせて起動
+poetry run app --model llama3 --server path/to/mcp_server.py --debug debug --port 8080 --share
+
+# または、エントリーポイントスクリプトを直接実行することも可能です
+python -m ollama_mcp.app
 ```
 
-### 2. MCPサーバーとの接続
+### プログラムからの使用
+
+プログラムから直接OllamaMCPを使用するには、以下のようにします：
 
 ```python
-from ollama_mcp.agno_integration import MCPAgnoClient
+from ollama_mcp.app import OllamaMCPApp
 
-# クライアントの初期化
-client = MCPAgnoClient(agent=agent)
+# アプリケーションのインスタンス化
+app = OllamaMCPApp(model_name="llama3", debug_level="info")
 
-# サーバーに接続
-await client.connect_to_server("path/to/mcp_server.py")
+# アプリケーションの実行
+app.run(server_path="path/to/mcp_server.py", port=7860)
 ```
 
-### 3. マルチモーダル機能の使用
+### MCPサーバーとの接続
+
+MCPサーバーに接続するには、以下のようにします：
 
 ```python
-from ollama_mcp.agno_multimodal import process_image, process_audio
+import asyncio
+from ollama_mcp.agno_integration import OllamaMCPIntegration
 
-# 画像処理
-image_result = await agent.process_image("path/to/image.jpg")
+async def connect_example():
+    # クライアントの初期化
+    client = OllamaMCPIntegration(model_name="llama3")
+    
+    # サーバーに接続
+    tools = await client.connect_to_server("path/to/mcp_server.py")
+    
+    # クエリの処理
+    response = await client.process_query("Hello, how are you?")
+    print(response)
+    
+    # マルチモーダルクエリの処理
+    response = await client.process_multimodal_query(
+        "What's in this image?", 
+        ["path/to/image.jpg"]
+    )
+    print(response)
+    
+    # 接続の終了
+    await client.close()
 
-# 音声処理
-audio_result = await agent.process_audio("path/to/audio.mp3")
+# 非同期関数の実行
+asyncio.run(connect_example())
 ```
 
 ## 高度な機能
 
-### 1. メモリ管理
+### マルチモーダル機能の使用
 
 ```python
-from agno.memory import AgentMemory
+from ollama_mcp.agno_multimodal import AgnoMultimodalIntegration
 
-# メモリの初期化
-memory = AgentMemory()
-agent.set_memory(memory)
+# マルチモーダルプロセッサーの初期化
+processor = AgnoMultimodalIntegration(model_name="llama3")
 
-# コンテキストの保存
-await memory.store("key", "value")
+# 画像処理の例
+async def process_image_example():
+    await processor.setup_agent()
+    result = await processor.process_with_images(
+        "What's in this image?",
+        ["path/to/image.jpg"]
+    )
+    print(result)
 
-# コンテキストの取得
-value = await memory.retrieve("key")
+# 音声処理の例
+async def process_audio_example():
+    await processor.setup_agent()
+    result = await processor.process_with_audio(
+        "Transcribe this audio",
+        "path/to/audio.mp3"
+    )
+    print(result)
 ```
 
-### 2. 知識ベースの統合
+### デバッグ機能の使用
 
 ```python
-from agno.knowledge import VectorStore
+from ollama_mcp.debug_module import AgnoMCPDebugger
 
-# ベクトルストアの初期化
-vector_store = VectorStore()
-agent.set_knowledge_base(vector_store)
+# デバッガーの初期化
+debugger = AgnoMCPDebugger(level="debug")
 
-# ドキュメントの追加
-await vector_store.add_document("path/to/doc.pdf")
+# ログの記録
+debugger.log("テストメッセージ", "info")
 
-# 関連情報の検索
-results = await vector_store.search("query")
-```
+# ツールコールの記録
+debugger.record_tool_call("test_tool", {"arg": "value"}, "result", 0.1)
 
-### 3. パフォーマンスモニタリング
+# エラーの記録
+debugger.record_error("connection_error", "Failed to connect")
 
-```python
-from agno.monitoring import Monitor
-
-# モニタリングの設定
-monitor = Monitor()
-agent.set_monitor(monitor)
-
-# パフォーマンス指標の取得
-metrics = await monitor.get_metrics()
+# ログの取得
+logs = debugger.get_recent_logs(10)
 ```
 
 ## トラブルシューティング
@@ -182,23 +211,17 @@ metrics = await monitor.get_metrics()
 ### デバッグ方法
 
 ```python
-import loguru
+import logging
 
 # ログレベルの設定
-loguru.logger.level("DEBUG")
+logging.basicConfig(level=logging.DEBUG)
 
-# 詳細なログ出力の有効化
-agent.enable_debug_logging()
-
-# パフォーマンスプロファイリング
-with agent.profile() as profiler:
-    result = await agent.process_query("test query")
-    
-print(profiler.summary())
+# デバッグモードでアプリを起動
+app = OllamaMCPApp(debug_level="debug")
+app.run()
 ```
 
 ## 参考リンク
 
 - [Agno公式ドキュメント](https://docs.agno.com)
-- [MCPプロトコル仕様](https://mcp-protocol.org)
-- [Gradioドキュメント](https://gradio.app/docs) 
+- [MCPプロトコル仕様](https://mcp-protocol.org) 
