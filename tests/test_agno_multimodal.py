@@ -50,11 +50,20 @@ async def test_processor_initialization(processor):
 @pytest.mark.asyncio
 async def test_setup_agent(processor, mock_agent):
     """エージェントのセットアップテスト"""
-    mock_tools = Mock()
+    # Noneの場合のテスト
+    await processor.setup_agent(None)
+    assert processor.agent is not None
+    assert processor.mcp_tools == []
     
+    # 空のリストの場合のテスト
+    await processor.setup_agent([])
+    assert processor.agent is not None
+    assert processor.mcp_tools == []
+    
+    # ツールが存在する場合のテスト
+    mock_tools = [{"name": "test_tool", "description": "Test tool"}]
     with patch('agno.agent.Agent', return_value=mock_agent):
         await processor.setup_agent(mock_tools)
-        
         assert processor.agent is not None
         assert processor.mcp_tools == mock_tools
         assert isinstance(processor.agent, Mock)
@@ -228,6 +237,10 @@ async def test_get_available_models(processor):
         assert "llava" in models["multimodal_models"]
         assert len(models["text_models"]) == 2
         assert len(models["multimodal_models"]) == 2
+        
+        # モックの呼び出し確認
+        mock_session.get.assert_called_once_with("http://localhost:11434/api/tags")
+        mock_response_obj.json.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_get_available_models_error(processor):

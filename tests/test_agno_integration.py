@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from ollama_mcp.agno_integration import OllamaMCPIntegration
 from agno.agent import Agent
 from agno.models.ollama import Ollama
+from mcp import StdioServerParameters
 
 @pytest.fixture
 def client():
@@ -27,41 +28,69 @@ async def test_connect_to_server(client):
         {"name": "test_tool", "description": "Test tool"},
         {"name": "another_tool", "description": "Another test tool"}
     ]
-    
+
     mock_env = {"PATH": "/usr/local/bin"}
-    mock_session = AsyncMock()
-    mock_session.get_resource = AsyncMock(
-        return_value={"actions": {"test": {"description": "Test action", "parameters": {}}}}
-    )
-    
+
     with patch('ollama_mcp.agno_integration.StdioServerParameters') as mock_params, \
          patch('agno.tools.mcp.MCPTools') as mock_mcp_tools, \
-         patch('agno.agent.Agent') as mock_agent:
-        
+         patch('agno.agent.Agent') as mock_agent, \
+         patch('mcp.client.stdio.anyio.open_process') as mock_open_process:
+
+        # サブプロセスのモック設定
+        mock_process = AsyncMock()
+        mock_process.stdin = AsyncMock()
+        mock_process.stdout = AsyncMock()
+        mock_process.stdin.aclose = AsyncMock()
+        mock_process.stdout.aclose = AsyncMock()
+        mock_open_process.return_value = mock_process
+
         # MCPツールのモック設定
         mock_mcp_instance = AsyncMock()
         mock_mcp_instance.mcp_resources = mock_tools
-        mock_mcp_instance.session = mock_session
-        mock_mcp_tools.return_value.__aenter__.return_value = mock_mcp_instance
-        
+        mock_mcp_instance.initialize = AsyncMock()
+        mock_mcp_instance.session = AsyncMock()
+        mock_mcp_instance.session.initialize = AsyncMock()
+        mock_mcp_instance.session.send_request = AsyncMock()
+        mock_mcp_instance.session.close = AsyncMock()
+        mock_mcp_tools.return_value = mock_mcp_instance
+        mock_mcp_tools.return_value.__aenter__ = AsyncMock(return_value=mock_mcp_instance)
+        mock_mcp_tools.return_value.__aexit__ = AsyncMock()
+
         # パラメータとエージェントの設定
-        mock_params.return_value = Mock(env=mock_env)
+        mock_params_instance = Mock(spec=StdioServerParameters)
+        mock_params_instance.command = "test_server.py"
+        mock_params_instance.args = ["--arg1", "--arg2"]
+        mock_params_instance.env = mock_env
+        mock_params_instance.cwd = None
+        mock_params_instance.encoding = "utf-8"
+        mock_params_instance.encoding_error_handler = "strict"
+        mock_params_instance.stdin = None
+        mock_params_instance.stdout = None
+        mock_params_instance.stderr = None
+        mock_params.return_value = mock_params_instance
         mock_agent.return_value = Mock(spec=Agent)
-        
+
+        # セッションのストリームモック
+        mock_read_stream = AsyncMock()
+        mock_write_stream = AsyncMock()
+        mock_mcp_instance.session._read_stream = mock_read_stream
+        mock_mcp_instance.session._write_stream = mock_write_stream
+
         tools = await client.connect_to_server("test_server.py")
-        
+
         # アサーション
         assert len(tools) == 2
-        assert tools[0]["name"] == "test_tool.test"
-        assert tools[1]["name"] == "another_tool.test"
+        assert tools[0]["name"] == "test_tool"
+        assert tools[1]["name"] == "another_tool"
         assert client.connected is True
         assert client.server_info is not None
         assert client.server_info["tools_count"] == 2
-        
+
         # モックの呼び出し確認
         mock_params.assert_called_once()
         mock_mcp_tools.assert_called_once()
         mock_agent.assert_called_once()
+        mock_open_process.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_process_query(client):
@@ -88,44 +117,55 @@ async def test_process_multimodal_query(client):
     mock_response = Mock(response="画像の説明")
     
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('agno.media.Image', autospec=True) as mock_image, \
+         patch('ollama_mcp.agno_integration.AgnoImage') as mock_image, \
          patch('agno.agent.Agent') as mock_agent:
         
         mock_agent_instance = Mock(spec=Agent)
         mock_agent_instance.arun = AsyncMock(return_value=mock_response)
         client.agent = mock_agent_instance
         client.connected = True
-        mock_image.return_value = Mock()
+        mock_image_instance = Mock()
+        mock_image.return_value = mock_image_instance
         
         response = await client.process_multimodal_query(test_query, test_images)
         
         assert response == "画像の説明"
         mock_agent_instance.arun.assert_called_once()
-        mock_image.assert_called_once_with(path=test_images[0])
+        mock_image.assert_called_once_with(filepath=test_images[0])
 
 @pytest.mark.asyncio
 async def test_stream_query(client):
     """ストリーミングクエリ処理テスト"""
     test_query = "ストリーミングテスト"
     mock_chunks = ["チャンク1", "チャンク2", "チャンク3"]
-    
-    async def mock_stream():
-        for chunk in mock_chunks:
-            yield Mock(response=chunk)
-            await asyncio.sleep(0.1)
-    
+
+    class MockAsyncIterator:
+        def __init__(self, chunks):
+            self.chunks = chunks
+            self.index = 0
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            if self.index >= len(self.chunks):
+                raise StopAsyncIteration
+            chunk = self.chunks[self.index]
+            self.index += 1
+            return Mock(response=chunk)
+
     with patch('agno.agent.Agent') as mock_agent:
         mock_agent_instance = Mock(spec=Agent)
-        mock_agent_instance.astream = AsyncMock(return_value=mock_stream())
+        mock_agent_instance.astream = Mock(return_value=MockAsyncIterator(mock_chunks))
         client.agent = mock_agent_instance
         client.connected = True
-        
+
         # コールバックのモック
         mock_callback = AsyncMock()
-        
+
         # ストリーミング処理のテスト
         response = await client.stream_query(test_query, callback=mock_callback)
-        
+
         assert response == "チャンク1チャンク2チャンク3"
         mock_agent_instance.astream.assert_called_once_with(test_query)
         assert mock_callback.call_count == 3

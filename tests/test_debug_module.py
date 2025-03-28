@@ -11,6 +11,16 @@ def debugger():
     return AgnoMCPDebugger(level="info")
 
 @pytest.fixture
+def info_debugger():
+    """テスト用のデバッガーインスタンスを作成（INFOレベル）"""
+    debugger = AgnoMCPDebugger(level="info")
+    yield debugger
+    # テスト後のクリーンアップ
+    debugger.clear_logs()
+    debugger.clear_tool_calls()
+    debugger.clear_errors()
+
+@pytest.fixture
 def cleanup():
     """テスト後のクリーンアップ"""
     yield
@@ -147,12 +157,17 @@ def test_export_logs(debugger, tmp_path):
         assert "tool_calls" in exported_data
         assert "errors" in exported_data
         
-        assert len(exported_data["logs"]) == 1
-        assert len(exported_data["tool_calls"]) == 1
-        assert len(exported_data["errors"]) == 1
-        
+        # ログの検証（エラーメッセージを含む）
+        assert len(exported_data["logs"]) == 2
         assert test_data["log"][0] in exported_data["logs"][0]["message"]
+        assert "Error: test_error" in exported_data["logs"][1]["message"]
+        
+        # ツールコールの検証
+        assert len(exported_data["tool_calls"]) == 1
         assert test_data["tool"][0] == exported_data["tool_calls"][0]["tool"]
+        
+        # エラーの検証
+        assert len(exported_data["errors"]) == 1
         assert test_data["error"][0] == exported_data["errors"][0]["type"]
 
 def test_clear_logs(info_debugger):
@@ -198,8 +213,8 @@ def test_clear_errors(debugger):
 def test_log_rotation(info_debugger):
     """ログローテーションのテスト"""
     # テストサイズを縮小（1MB程度）
-    large_message = "x" * 100  # 100バイト
-    for i in range(1000):  # 約100KB
+    large_message = "x" * 1000  # 1KB
+    for i in range(1000):  # 約1MB
         info_debugger.log(f"{large_message} - {i}", "info")
     
     # ログファイルのサイズを確認
@@ -210,6 +225,12 @@ def test_log_rotation(info_debugger):
     log_dir = Path("logs")
     rotated_logs = list(log_dir.glob("*.log.*"))
     assert len(rotated_logs) > 0
+    
+    # ローテーションされたファイルの内容を確認
+    if rotated_logs:
+        with open(rotated_logs[0], 'r') as f:
+            content = f.read()
+            assert "x" in content  # ログメッセージが含まれていることを確認
 
 def test_concurrent_logging(info_debugger):
     """並行ログ記録のテスト"""
