@@ -37,14 +37,17 @@ class AgnoMultimodalIntegration:
         
         self.debugger.log(f"Initialized AgnoMultimodalIntegration with model {model_name}", "info")
     
-    async def setup_agent(self, tools: List[Dict[str, Any]]) -> None:
+    async def setup_agent(self, tools: Optional[List[Dict[str, Any]]] = None) -> None:
         """
         エージェントをセットアップ
         
         Args:
-            tools: 利用可能なツールのリスト
+            tools: 利用可能なツールのリスト（デフォルトは空リスト）
         """
         try:
+            # Noneの場合は空リストに変換
+            tools = tools or []
+            
             # Ollamaモデルの設定
             model = Ollama(
                 id=self.model_name,
@@ -94,12 +97,12 @@ class AgnoMultimodalIntegration:
                 img_path = Path(img_path)
                 if img_path.exists():
                     self.debugger.log(f"Adding image: {img_path}", "debug")
-                    images.append(AgnoImage(filepath=str(img_path)))
+                    image = AgnoImage(filepath=str(img_path))
+                    images.append(image)
                 else:
-                    self.debugger.record_error(
-                        "image_not_found", 
-                        f"Image file not found: {img_path}"
-                    )
+                    error_msg = f"Image file not found: {img_path}"
+                    self.debugger.record_error("image_not_found", error_msg)
+                    raise FileNotFoundError(error_msg)
             
             # 画像処理を実行
             if stream:
@@ -127,15 +130,15 @@ class AgnoMultimodalIntegration:
             raise
     
     async def process_with_audio(self, 
-                               prompt: str, 
-                               audio_paths: List[Union[str, Path]], 
+                               prompt: str,
+                               audio_path: Union[str, Path],
                                stream: bool = False) -> str:
         """
         音声を含むプロンプトを処理
         
         Args:
             prompt: テキストプロンプト
-            audio_paths: 音声ファイルのパスのリスト
+            audio_path: 音声ファイルのパス
             stream: ストリーミング応答を使用するかどうか
             
         Returns:
@@ -146,48 +149,62 @@ class AgnoMultimodalIntegration:
         
         try:
             # 音声をAgnoオーディオに変換
-            audio_files = []
-            for audio_path in audio_paths:
-                audio_path = Path(audio_path)
-                if audio_path.exists():
-                    self.debugger.log(f"Adding audio: {audio_path}", "debug")
-                    
-                    # 音声フォーマットを拡張子から判断
-                    format = audio_path.suffix.lstrip('.')
-                    with open(audio_path, "rb") as f:
-                        audio_content = f.read()
-                    
-                    audio_files.append(AgnoAudio(content=audio_content, format=format))
-                else:
-                    self.debugger.record_error(
-                        "audio_not_found", 
-                        f"Audio file not found: {audio_path}"
-                    )
+            audio_path = Path(audio_path)
+            if audio_path.exists():
+                self.debugger.log(f"Adding audio: {audio_path}", "debug")
+                
+                # 音声フォーマットを拡張子から判断
+                format = audio_path.suffix.lstrip('.')
+                with open(audio_path, "rb") as f:
+                    audio_content = f.read()
+                
+                audio_file = AgnoAudio(content=audio_content, format=format)
+            else:
+                self.debugger.record_error(
+                    "audio_not_found", 
+                    f"Audio file not found: {audio_path}"
+                )
+                raise FileNotFoundError(f"Audio file not found: {audio_path}")
             
             # 音声処理を実行
             if stream:
                 full_response = []
                 
-                self.debugger.log(f"Streaming response with {len(audio_files)} audio files", "debug")
-                async for response_chunk in self.agent.astream(prompt, audio=audio_files):
+                self.debugger.log("Streaming response with audio file", "debug")
+                async for response_chunk in self.agent.astream(prompt, audio=[audio_file]):
                     chunk_text = response_chunk.response
                     full_response.append(chunk_text)
                     self.debugger.log(f"Received chunk: {chunk_text}", "debug")
                 
                 result = "".join(full_response)
             else:
-                self.debugger.log(f"Processing prompt with {len(audio_files)} audio files", "debug")
-                response = await self.agent.arun(prompt, audio=audio_files)
+                self.debugger.log("Processing prompt with audio file", "debug")
+                response = await self.agent.arun(prompt, audio=[audio_file])
                 result = response.response
             
-            self.debugger.log(f"Audio processing complete", "info")
+            self.debugger.log("Audio processing complete", "info")
             return result
         except Exception as e:
             self.debugger.record_error(
-                "audio_processing_error", 
+                "audio_processing_error",
                 f"Error processing audio input: {str(e)}"
             )
             raise
+    
+    async def process_with_audio_streaming(self,
+                                      prompt: str,
+                                      audio_path: Union[str, Path]) -> str:
+        """
+        音声を含むプロンプトをストリーミング処理
+        
+        Args:
+            prompt: テキストプロンプト
+            audio_path: 音声ファイルのパス
+            
+        Returns:
+            生成されたテキスト
+        """
+        return await self.process_with_audio(prompt, audio_path, stream=True)
     
     async def get_available_models(self) -> Dict[str, List[str]]:
         """
