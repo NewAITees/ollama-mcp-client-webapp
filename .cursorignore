@@ -38,3 +38,5 @@ htmlcov/
 docs/build/
 
 poetry.lock
+
+uv.lock

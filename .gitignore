@@ -63,3 +63,5 @@ node_modules/
 *.json
 config/servers.json
 poetry.lock
+
+uv.lock
