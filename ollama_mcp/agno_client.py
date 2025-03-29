@@ -130,9 +130,15 @@ class AgnoClient:
                 id=self.model_name,
                 name="Ollama",
                 provider="Ollama",
-                supports_native_structured_outputs=True,
-                parameters=self.model_params
+                supports_native_structured_outputs=True
             )
+            
+            # パラメータを設定 (初期化後に別途設定)
+            for key, value in self.model_params.items():
+                if hasattr(model, key):
+                    setattr(model, key, value)
+                else:
+                    self.debugger.log(f"Warning: Model attribute {key} not found", "warning")
             
             # エージェントの初期化
             self.agent = Agent(
@@ -295,9 +301,13 @@ class AgnoClient:
         self.model_params.update(params)
         
         # エージェントが既に存在する場合は設定を更新
-        if self.agent and hasattr(self.agent.model, 'parameters'):
+        if self.agent and hasattr(self.agent, 'model'):
             for key, value in params.items():
-                self.agent.model.parameters[key] = value
+                # 属性が存在する場合のみ更新
+                if hasattr(self.agent.model, key):
+                    setattr(self.agent.model, key, value)
+                else:
+                    self.debugger.log(f"Warning: Model attribute {key} not found for update", "warning")
             
             self.debugger.log(f"Model parameters updated: {params}", "info")
     
