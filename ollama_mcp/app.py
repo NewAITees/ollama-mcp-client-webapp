@@ -668,7 +668,7 @@ def main():
                         help="Debug log level")
     parser.add_argument("--port", type=int, default=7860, help="UI port")
     parser.add_argument("--share", action="store_true", help="Generate a public share link")
-    parser.add_argument("--direct", action="store_true", help="Use direct mode (no MCP server)")
+    parser.add_argument("--direct", action="store_false", help="Use direct mode (no MCP server)")
     
     args = parser.parse_args()
     

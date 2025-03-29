@@ -125,26 +125,14 @@ class AgnoClient:
             # None の場合は空リストに
             tools = tools or []
             
-            # モデルの設定
-            model = Ollama(
-                id=self.model_name,
-                name="Ollama",
-                provider="Ollama",
-                supports_native_structured_outputs=True
-            )
-            
-            # パラメータを設定 (初期化後に別途設定)
-            for key, value in self.model_params.items():
-                if hasattr(model, key):
-                    setattr(model, key, value)
-                else:
-                    self.debugger.log(f"Warning: Model attribute {key} not found", "warning")
+
+            from agno.tools.duckduckgo import DuckDuckGoTools
             
             # エージェントの初期化
             self.agent = Agent(
-                model=model,
-                tools=tools,
-                show_tool_calls=True
+            model=Ollama(id=self.model_name),
+           # tools=[DuckDuckGoTools()],
+            markdown=True
             )
             
             self.debugger.log(f"Agent setup completed with {len(tools)} tools", "info")
@@ -215,7 +203,7 @@ class AgnoClient:
                 
                 self.debugger.log(f"Starting streaming response", "debug")
                 async for response_chunk in self.agent.astream(query, images=agno_images or None):
-                    chunk_text = response_chunk.response
+                    chunk_text = response_chunk.content  # .response から .content に変更
                     full_response.append(chunk_text)
                     
                     if callback:
@@ -227,7 +215,7 @@ class AgnoClient:
             else:
                 # 通常の処理
                 response = await self.agent.arun(query, images=agno_images or None)
-                result = response.response
+                result = response.content  # .response から .content に変更
             
             # 処理時間を計測
             duration = asyncio.get_event_loop().time() - start_time
@@ -244,37 +232,42 @@ class AgnoClient:
         except Exception as e:
             self.debugger.record_error("query_processing_error", f"Error processing query: {str(e)}")
             raise
-    
-    async def get_available_models(self) -> Dict[str, List[str]]:
+        
+    async def get_available_models(self) -> List[str]:
         """
-        利用可能なモデルの一覧を取得
+        利用可能なモデルを取得
         
         Returns:
-            モデルタイプごとのモデル名のリスト
+            モデル名のリスト
         """
         try:
+            base_url = self.integration.base_url if hasattr(self.integration, 'base_url') else "http://localhost:11434"
+            
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/api/tags") as response:
+                async with session.get(f"{base_url}/api/tags") as response:
                     if response.status == 200:
                         data = await response.json()
                         models = data.get("models", [])
                         
-                        return {
-                            "text_models": [m["name"] for m in models if m.get("type") == "text"],
-                            "multimodal_models": [m["name"] for m in models if m.get("type") == "multimodal"]
-                        }
+                        # すべてのモデル名をリストとして返す
+                        model_names = [model["name"] for model in models]
+                        self.debugger.log(f"Retrieved {len(model_names)} models from API", "info")
+                        return model_names
                     else:
                         self.debugger.record_error(
                             "model_fetch_error",
-                            f"Failed to fetch models: {response.status}"
+                            f"Failed to fetch models: HTTP {response.status}"
                         )
-                        return {"text_models": [], "multimodal_models": []}
         except Exception as e:
             self.debugger.record_error(
-                "model_fetch_error",
+                "model_fetch_error", 
                 f"Error fetching available models: {str(e)}"
             )
-            return {"text_models": [], "multimodal_models": []}
+        
+        # API呼び出しが失敗した場合はデフォルト値を返す
+        default_models = ["gemma3:27b", "llama3", "mistral", "mixtral"]
+        self.debugger.log(f"Using default model list: {default_models}", "warning")
+        return default_models
     
     def set_model(self, model_name: str) -> None:
         """
