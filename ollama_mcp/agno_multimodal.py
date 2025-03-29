@@ -18,7 +18,7 @@ class AgnoMultimodalIntegration:
     Agnoベースのマルチモーダル統合クラス
     
     主な責務:
-    - 画像、音声を含むマルチモーダル入力の処理
+    - 画像を含むマルチモーダル入力の処理
     - マルチモーダル対応モデルの管理
     - MCPツールとの連携
     """
@@ -129,82 +129,6 @@ class AgnoMultimodalIntegration:
             )
             raise
     
-    async def process_with_audio(self, 
-                               prompt: str,
-                               audio_path: Union[str, Path],
-                               stream: bool = False) -> str:
-        """
-        音声を含むプロンプトを処理
-        
-        Args:
-            prompt: テキストプロンプト
-            audio_path: 音声ファイルのパス
-            stream: ストリーミング応答を使用するかどうか
-            
-        Returns:
-            生成されたテキスト
-        """
-        if not self.agent:
-            await self.setup_agent(self.mcp_tools)
-        
-        try:
-            # 音声をAgnoオーディオに変換
-            audio_path = Path(audio_path)
-            if audio_path.exists():
-                self.debugger.log(f"Adding audio: {audio_path}", "debug")
-                
-                # 音声フォーマットを拡張子から判断
-                format = audio_path.suffix.lstrip('.')
-                with open(audio_path, "rb") as f:
-                    audio_content = f.read()
-                
-                audio_file = AgnoAudio(content=audio_content, format=format)
-            else:
-                self.debugger.record_error(
-                    "audio_not_found", 
-                    f"Audio file not found: {audio_path}"
-                )
-                raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            
-            # 音声処理を実行
-            if stream:
-                full_response = []
-                
-                self.debugger.log("Streaming response with audio file", "debug")
-                async for response_chunk in self.agent.astream(prompt, audio=[audio_file]):
-                    chunk_text = response_chunk.response
-                    full_response.append(chunk_text)
-                    self.debugger.log(f"Received chunk: {chunk_text}", "debug")
-                
-                result = "".join(full_response)
-            else:
-                self.debugger.log("Processing prompt with audio file", "debug")
-                response = await self.agent.arun(prompt, audio=[audio_file])
-                result = response.response
-            
-            self.debugger.log("Audio processing complete", "info")
-            return result
-        except Exception as e:
-            self.debugger.record_error(
-                "audio_processing_error",
-                f"Error processing audio input: {str(e)}"
-            )
-            raise
-    
-    async def process_with_audio_streaming(self,
-                                      prompt: str,
-                                      audio_path: Union[str, Path]) -> str:
-        """
-        音声を含むプロンプトをストリーミング処理
-        
-        Args:
-            prompt: テキストプロンプト
-            audio_path: 音声ファイルのパス
-            
-        Returns:
-            生成されたテキスト
-        """
-        return await self.process_with_audio(prompt, audio_path, stream=True)
     
     async def get_available_models(self) -> Dict[str, List[str]]:
         """

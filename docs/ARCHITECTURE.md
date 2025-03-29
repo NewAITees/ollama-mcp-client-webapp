@@ -209,3 +209,122 @@ graph TD
 7. **マルチモーダル**: 各種メディアの効率的な処理と統合
 
 このアーキテクチャにより、MCPサーバーとAgnoフレームワークを効率的に統合し、高度なマルチモーダルエージェント機能を提供することが可能になります。
+
+## MCPサーバー情報可視化コンポーネント
+
+```mermaid
+graph TD
+    subgraph "MCPサーバー可視化"
+        VS[可視化サブシステム]
+        SM[状態モニター]
+        TM[ツール使用モニター]
+        PM[パフォーマンスモニター]
+        EM[エラーモニター]
+    end
+    
+    subgraph "データ収集"
+        DC[データコレクター]
+        MP[メトリクスプロセッサー]
+        AP[アラートプロセッサー]
+    end
+    
+    subgraph "データストア"
+        TS[時系列データ]
+        ES[イベントストア]
+        MS[メトリクスストア]
+    end
+    
+    VS --> SM
+    VS --> TM
+    VS --> PM
+    VS --> EM
+    
+    SM --> DC
+    TM --> DC
+    PM --> DC
+    EM --> DC
+    
+    DC --> MP
+    DC --> AP
+    
+    MP --> TS
+    MP --> MS
+    AP --> ES
+    
+    style VS fill:#bbdefb,stroke:#1976d2
+    style DC fill:#c8e6c9,stroke:#4caf50
+    style MP fill:#ffecb3,stroke:#ffa000
+    style AP fill:#e1bee7,stroke:#8e24aa
+    style TS fill:#ffcdd2,stroke:#e53935
+    style MS fill:#d1c4e9,stroke:#512da8
+    style ES fill:#b2dfdb,stroke:#00796b
+```
+
+### コンポーネントの責務
+
+#### 可視化サブシステム
+- **状態モニター**: サーバーの基本状態と接続情報の表示
+- **ツール使用モニター**: ツールの使用統計と分析
+- **パフォーマンスモニター**: リアルタイムパフォーマンス指標の表示
+- **エラーモニター**: エラー情報の集約と分析
+
+#### データ収集
+- **データコレクター**: 各種メトリクスとイベントの収集
+- **メトリクスプロセッサー**: 収集データの処理と集計
+- **アラートプロセッサー**: 異常検知とアラート生成
+
+#### データストア
+- **時系列データ**: 時系列メトリクスの保存
+- **イベントストア**: システムイベントの記録
+- **メトリクスストア**: 集計済みメトリクスの保存
+
+### データフロー
+
+```mermaid
+sequenceDiagram
+    participant UI as UI Layer
+    participant VS as Visualizer
+    participant DC as DataCollector
+    participant MP as MetricsProcessor
+    participant DS as DataStore
+    
+    UI->>VS: リクエスト可視化データ
+    VS->>DC: データ収集リクエスト
+    DC->>MP: 生データ送信
+    MP->>DS: 処理済みデータ保存
+    DS-->>MP: 保存確認
+    MP-->>DC: 処理完了通知
+    DC-->>VS: データ返却
+    VS-->>UI: 可視化データ表示
+```
+
+### フォルダ構成の更新
+
+```mermaid
+graph TD
+    A[ollama-mcp-client] --> V[visualization/]
+    V --> V1[__init__.py]
+    V --> V2[visualizer.py]
+    V --> V3[collectors/]
+    V --> V4[processors/]
+    V --> V5[stores/]
+    
+    V3 --> C1[__init__.py]
+    V3 --> C2[data_collector.py]
+    V3 --> C3[metrics_collector.py]
+    
+    V4 --> P1[__init__.py]
+    V4 --> P2[metrics_processor.py]
+    V4 --> P3[alert_processor.py]
+    
+    V5 --> S1[__init__.py]
+    V5 --> S2[time_series.py]
+    V5 --> S3[event_store.py]
+    V5 --> S4[metrics_store.py]
+    
+    style A fill:#f9f9f9,stroke:#999
+    style V fill:#bbdefb,stroke:#1976d2
+    style V3 fill:#c8e6c9,stroke:#4caf50
+    style V4 fill:#ffecb3,stroke:#ffa000
+    style V5 fill:#e1bee7,stroke:#8e24aa
+```

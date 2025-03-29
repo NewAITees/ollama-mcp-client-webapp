@@ -288,3 +288,408 @@ graph LR
     F --> J[コンテキスト管理]
     G --> K[知識検索]
     H --> L[メディア処理]
+```
+
+## MCPサーバー情報可視化API
+
+### 1. サーバー状態API
+
+#### 1.1 基本状態の取得
+
+```typescript
+GET /api/mcp/status
+
+Response {
+    status: "connected" | "disconnected" | "error",
+    uptime: number,  // 秒単位
+    activeConnections: number,
+    toolCount: number,
+    lastUpdated: string  // ISO 8601形式
+}
+```
+
+#### 1.2 詳細情報の取得
+
+```typescript
+GET /api/mcp/info
+
+Response {
+    version: string,
+    serverType: string,
+    supportedProtocols: string[],
+    capabilities: {
+        multimodal: boolean,
+        streaming: boolean,
+        batchProcessing: boolean
+    },
+    configuration: {
+        maxConnections: number,
+        timeoutSeconds: number,
+        maxRequestSize: number
+    }
+}
+```
+
+### 2. メトリクスAPI
+
+#### 2.1 リアルタイムメトリクスの取得
+
+```typescript
+GET /api/mcp/metrics/realtime
+
+Response {
+    timestamp: string,  // ISO 8601形式
+    metrics: {
+        requestsPerMinute: number,
+        averageResponseTime: number,  // ミリ秒
+        errorRate: number,  // パーセント
+        cpuUsage: number,  // パーセント
+        memoryUsage: number,  // バイト
+        diskIO: {
+            read: number,  // バイト/秒
+            write: number  // バイト/秒
+        }
+    }
+}
+```
+
+#### 2.2 履歴メトリクスの取得
+
+```typescript
+GET /api/mcp/metrics/history
+Query Parameters {
+    startTime: string,  // ISO 8601形式
+    endTime: string,    // ISO 8601形式
+    resolution: "1m" | "5m" | "1h" | "1d"
+}
+
+Response {
+    timeRange: {
+        start: string,
+        end: string
+    },
+    dataPoints: Array<{
+        timestamp: string,
+        metrics: {
+            requestsPerMinute: number,
+            averageResponseTime: number,
+            errorRate: number,
+            cpuUsage: number,
+            memoryUsage: number
+        }
+    }>
+}
+```
+
+### 3. ツール使用状況API
+
+#### 3.1 ツール使用統計の取得
+
+```typescript
+GET /api/mcp/tools/stats
+Query Parameters {
+    timeRange: "1h" | "24h" | "7d" | "30d",
+    category?: string
+}
+
+Response {
+    summary: {
+        totalCalls: number,
+        uniqueTools: number,
+        averageSuccessRate: number
+    },
+    toolStats: Array<{
+        toolName: string,
+        category: string,
+        calls: number,
+        successRate: number,
+        averageExecutionTime: number,
+        lastUsed: string
+    }>
+}
+```
+
+#### 3.2 ツール詳細情報の取得
+
+```typescript
+GET /api/mcp/tools/{toolName}/details
+
+Response {
+    name: string,
+    description: string,
+    schema: object,
+    stats: {
+        totalCalls: number,
+        successRate: number,
+        averageExecutionTime: number,
+        errorTypes: Array<{
+            type: string,
+            count: number
+        }>,
+        usageHistory: Array<{
+            timestamp: string,
+            success: boolean,
+            executionTime: number
+        }>
+    }
+}
+```
+
+### 4. エラー分析API
+
+#### 4.1 エラーサマリーの取得
+
+```typescript
+GET /api/mcp/errors/summary
+Query Parameters {
+    timeRange: "1h" | "24h" | "7d" | "30d"
+}
+
+Response {
+    totalErrors: number,
+    errorRate: number,
+    topErrors: Array<{
+        type: string,
+        count: number,
+        percentage: number
+    }>,
+    trends: {
+        hourly: Array<{
+            hour: string,
+            count: number
+        }>,
+        daily: Array<{
+            date: string,
+            count: number
+        }>
+    }
+}
+```
+
+#### 4.2 エラー詳細の取得
+
+```typescript
+GET /api/mcp/errors/details
+Query Parameters {
+    errorType?: string,
+    startTime: string,
+    endTime: string,
+    limit: number,
+    offset: number
+}
+
+Response {
+    total: number,
+    errors: Array<{
+        id: string,
+        timestamp: string,
+        type: string,
+        message: string,
+        stackTrace: string,
+        context: {
+            toolName?: string,
+            requestId?: string,
+            userId?: string
+        },
+        status: "new" | "investigating" | "resolved"
+    }>
+}
+```
+
+### 5. アラート設定API
+
+#### 5.1 アラートルールの取得
+
+```typescript
+GET /api/mcp/alerts/rules
+
+Response {
+    rules: Array<{
+        id: string,
+        name: string,
+        condition: {
+            metric: string,
+            operator: ">" | "<" | "==" | ">=",
+            threshold: number
+        },
+        actions: Array<{
+            type: "email" | "webhook" | "notification",
+            config: object
+        }>,
+        enabled: boolean
+    }>
+}
+```
+
+#### 5.2 アラートルールの作成/更新
+
+```typescript
+POST /api/mcp/alerts/rules
+PUT /api/mcp/alerts/rules/{ruleId}
+
+Request {
+    name: string,
+    condition: {
+        metric: string,
+        operator: ">" | "<" | "==" | ">=",
+        threshold: number
+    },
+    actions: Array<{
+        type: "email" | "webhook" | "notification",
+        config: object
+    }>,
+    enabled: boolean
+}
+
+Response {
+    id: string,
+    created: string,
+    updated: string,
+    // ... その他のルール情報
+}
+```
+
+## WebSocket API
+
+### 1. リアルタイム更新
+
+```typescript
+WS /ws/mcp/updates
+
+// サーバーからのメッセージ
+{
+    type: "status" | "metrics" | "error" | "alert",
+    timestamp: string,
+    data: object  // メッセージタイプに応じたデータ
+}
+```
+
+## データモデル
+
+### 1. サーバー状態モデル
+
+```typescript
+interface ServerState {
+    status: "connected" | "disconnected" | "error";
+    uptime: number;
+    activeConnections: number;
+    toolCount: number;
+    lastUpdated: string;
+}
+```
+
+### 2. メトリクスモデル
+
+```typescript
+interface Metrics {
+    timestamp: string;
+    requestsPerMinute: number;
+    averageResponseTime: number;
+    errorRate: number;
+    cpuUsage: number;
+    memoryUsage: number;
+    diskIO: {
+        read: number;
+        write: number;
+    };
+}
+```
+
+### 3. ツール統計モデル
+
+```typescript
+interface ToolStats {
+    toolName: string;
+    category: string;
+    calls: number;
+    successRate: number;
+    averageExecutionTime: number;
+    lastUsed: string;
+    errorTypes: Array<{
+        type: string;
+        count: number;
+    }>;
+}
+```
+
+### 4. エラーモデル
+
+```typescript
+interface Error {
+    id: string;
+    timestamp: string;
+    type: string;
+    message: string;
+    stackTrace: string;
+    context: {
+        toolName?: string;
+        requestId?: string;
+        userId?: string;
+    };
+    status: "new" | "investigating" | "resolved";
+}
+```
+
+## 使用例
+
+### 1. サーバー状態の監視
+
+```typescript
+// サーバー状態の定期的な取得
+async function monitorServerStatus() {
+    try {
+        const status = await fetch('/api/mcp/status');
+        const info = await fetch('/api/mcp/info');
+        
+        updateDashboard({
+            status: status.data,
+            info: info.data
+        });
+    } catch (error) {
+        handleError(error);
+    }
+}
+
+// WebSocketを使用したリアルタイム更新
+const ws = new WebSocket('/ws/mcp/updates');
+ws.onmessage = (event) => {
+    const update = JSON.parse(event.data);
+    handleRealtimeUpdate(update);
+};
+```
+
+### 2. メトリクスの可視化
+
+```typescript
+// 履歴メトリクスの取得と表示
+async function visualizeMetrics() {
+    const endTime = new Date().toISOString();
+    const startTime = new Date(Date.now() - 24*60*60*1000).toISOString();
+    
+    try {
+        const metrics = await fetch(`/api/mcp/metrics/history?startTime=${startTime}&endTime=${endTime}&resolution=5m`);
+        
+        createMetricsChart(metrics.data.dataPoints);
+    } catch (error) {
+        handleError(error);
+    }
+}
+```
+
+### 3. エラー分析
+
+```typescript
+// エラーサマリーの取得と表示
+async function analyzeErrors() {
+    try {
+        const summary = await fetch('/api/mcp/errors/summary?timeRange=24h');
+        const details = await fetch('/api/mcp/errors/details?limit=10&offset=0');
+        
+        updateErrorDashboard({
+            summary: summary.data,
+            recentErrors: details.data.errors
+        });
+    } catch (error) {
+        handleError(error);
+    }
+}

@@ -517,3 +517,330 @@ flowchart TD
 Ollama MCP Client & Agent アプリケーションは、ユーザーフレンドリーなインターフェースを通じてMCPサーバーとの連携を効率化し、デバッグ機能を提供し、AIエージェント能力を拡張するように設計されています。上記のフローと遷移図は、アプリケーションの基本的な動作と拡張可能性を示しています。
 
 このドキュメントは開発の進行に伴って更新される予定であり、フィードバックやユーザビリティテストの結果に基づいて最適化が行われます。
+
+## MCPサーバー情報可視化フロー
+
+### 1. サーバーモニタリングフロー
+
+```mermaid
+flowchart TD
+    A[モニタリング開始] --> B{サーバー接続状態}
+    B -->|接続済み| C[基本情報取得]
+    B -->|未接続| D[接続設定を促す]
+    
+    C --> E[メトリクス収集開始]
+    E --> F{リアルタイム更新モード}
+    
+    F -->|WebSocket| G[継続的更新]
+    F -->|ポーリング| H[定期的更新]
+    
+    G --> I[ダッシュボード更新]
+    H --> I
+    
+    I --> J{アラート条件}
+    J -->|閾値超過| K[アラート通知]
+    J -->|正常| L[監視継続]
+    
+    K --> M[アラートログ記録]
+    L --> F
+    
+    style A fill:#bbdefb,stroke:#1976d2
+    style B fill:#fff9c4,stroke:#fbc02d
+    style K fill:#ffcdd2,stroke:#c62828
+    style L fill:#c8e6c9,stroke:#2e7d32
+```
+
+### 2. ツール分析フロー
+
+```mermaid
+flowchart TD
+    A[ツール分析開始] --> B[ツール一覧取得]
+    B --> C[使用統計収集]
+    C --> D{分析タイプ}
+    
+    D -->|使用頻度| E[頻度分析]
+    D -->|成功率| F[成功率分析]
+    D -->|実行時間| G[パフォーマンス分析]
+    D -->|エラー| H[エラー分析]
+    
+    E --> I[使用頻度レポート]
+    F --> J[成功率レポート]
+    G --> K[パフォーマンスレポート]
+    H --> L[エラーレポート]
+    
+    I --> M[可視化更新]
+    J --> M
+    K --> M
+    L --> M
+    
+    M --> N{最適化推奨}
+    N -->|必要| O[最適化提案]
+    N -->|不要| P[監視継続]
+    
+    style A fill:#bbdefb,stroke:#1976d2
+    style D fill:#fff9c4,stroke:#fbc02d
+    style O fill:#ffcdd2,stroke:#c62828
+    style P fill:#c8e6c9,stroke:#2e7d32
+```
+
+### 3. エラー分析フロー
+
+```mermaid
+flowchart TD
+    A[エラー分析開始] --> B[エラーログ収集]
+    B --> C[エラー分類]
+    C --> D{エラータイプ}
+    
+    D -->|システムエラー| E[システム分析]
+    D -->|ツールエラー| F[ツール分析]
+    D -->|通信エラー| G[通信分析]
+    D -->|その他| H[一般分析]
+    
+    E --> I[システム改善提案]
+    F --> J[ツール改善提案]
+    G --> K[通信改善提案]
+    H --> L[一般改善提案]
+    
+    I --> M[対策実施]
+    J --> M
+    K --> M
+    L --> M
+    
+    M --> N{効果検証}
+    N -->|改善| O[監視継続]
+    N -->|未改善| P[再分析]
+    
+    style A fill:#bbdefb,stroke:#1976d2
+    style D fill:#fff9c4,stroke:#fbc02d
+    style P fill:#ffcdd2,stroke:#c62828
+    style O fill:#c8e6c9,stroke:#2e7d32
+```
+
+### 4. パフォーマンス最適化フロー
+
+```mermaid
+flowchart TD
+    A[最適化開始] --> B[パフォーマンス測定]
+    B --> C[ボトルネック分析]
+    C --> D{問題領域}
+    
+    D -->|CPU使用率| E[CPU最適化]
+    D -->|メモリ使用| F[メモリ最適化]
+    D -->|ディスクI/O| G[I/O最適化]
+    D -->|ネットワーク| H[通信最適化]
+    
+    E --> I[CPU改善施策]
+    F --> J[メモリ改善施策]
+    G --> K[I/O改善施策]
+    H --> L[通信改善施策]
+    
+    I --> M[改善実施]
+    J --> M
+    K --> M
+    L --> M
+    
+    M --> N{効果測定}
+    N -->|改善| O[監視継続]
+    N -->|未改善| P[再分析]
+    
+    style A fill:#bbdefb,stroke:#1976d2
+    style D fill:#fff9c4,stroke:#fbc02d
+    style P fill:#ffcdd2,stroke:#c62828
+    style O fill:#c8e6c9,stroke:#2e7d32
+```
+
+### 5. アラート管理フロー
+
+```mermaid
+flowchart TD
+    A[アラート設定開始] --> B[メトリクス選択]
+    B --> C[閾値設定]
+    C --> D{アラートタイプ}
+    
+    D -->|システム| E[システムアラート]
+    D -->|パフォーマンス| F[パフォーマンスアラート]
+    D -->|エラー| G[エラーアラート]
+    D -->|カスタム| H[カスタムアラート]
+    
+    E --> I[通知設定]
+    F --> I
+    G --> I
+    H --> I
+    
+    I --> J{通知方法}
+    J -->|Email| K[メール設定]
+    J -->|Webhook| L[Webhook設定]
+    J -->|UI| M[UI通知設定]
+    
+    K --> N[設定保存]
+    L --> N
+    M --> N
+    
+    N --> O[アラート有効化]
+    
+    style A fill:#bbdefb,stroke:#1976d2
+    style D fill:#fff9c4,stroke:#fbc02d
+    style J fill:#fff9c4,stroke:#fbc02d
+    style O fill:#c8e6c9,stroke:#2e7d32
+```
+
+## 画面遷移図
+
+### MCPモニタリング画面遷移
+
+```mermaid
+stateDiagram-v2
+    [*] --> ダッシュボード
+    
+    state ダッシュボード {
+        [*] --> 概要
+        概要 --> サーバー状態
+        概要 --> ツール分析
+        概要 --> エラー分析
+        概要 --> パフォーマンス
+        
+        state サーバー状態 {
+            基本情報
+            詳細情報
+            リソース使用状況
+        }
+        
+        state ツール分析 {
+            使用統計
+            成功率
+            実行時間分析
+        }
+        
+        state エラー分析 {
+            エラー一覧
+            トレンド分析
+            詳細ログ
+        }
+        
+        state パフォーマンス {
+            リアルタイムメトリクス
+            履歴データ
+            最適化提案
+        }
+    }
+    
+    ダッシュボード --> 設定
+    設定 --> アラート設定
+    設定 --> 表示設定
+    設定 --> 更新間隔設定
+    
+    アラート設定 --> ダッシュボード
+    表示設定 --> ダッシュボード
+    更新間隔設定 --> ダッシュボード
+```
+
+## エラーケースとリカバリー
+
+### 1. 接続エラー処理
+
+```mermaid
+flowchart TD
+    A[接続エラー発生] --> B{エラータイプ}
+    B -->|タイムアウト| C[再接続試行]
+    B -->|認証エラー| D[認証情報確認]
+    B -->|サーバーダウン| E[サーバー状態確認]
+    
+    C --> F{再接続成功?}
+    F -->|成功| G[通常監視再開]
+    F -->|失敗| H[手動対応要求]
+    
+    D --> I[認証情報更新]
+    I --> J[再接続試行]
+    
+    E --> K[サーバー復旧待機]
+    K --> L[自動再接続]
+    
+    style A fill:#ffcdd2,stroke:#c62828
+    style F fill:#fff9c4,stroke:#fbc02d
+    style G fill:#c8e6c9,stroke:#2e7d32
+    style H fill:#ffcdd2,stroke:#c62828
+```
+
+### 2. データ収集エラー処理
+
+```mermaid
+flowchart TD
+    A[データ収集エラー] --> B{エラータイプ}
+    B -->|API制限| C[レート制限待機]
+    B -->|データ形式| D[データ変換]
+    B -->|アクセス権限| E[権限確認]
+    
+    C --> F[収集再開]
+    D --> G{変換成功?}
+    G -->|成功| F
+    G -->|失敗| H[エラーログ記録]
+    
+    E --> I[権限更新]
+    I --> F
+    
+    F --> J[監視継続]
+    H --> K[手動確認要求]
+    
+    style A fill:#ffcdd2,stroke:#c62828
+    style G fill:#fff9c4,stroke:#fbc02d
+    style J fill:#c8e6c9,stroke:#2e7d32
+    style K fill:#ffcdd2,stroke:#c62828
+```
+
+## 主要な操作シーケンス
+
+### 1. リアルタイムモニタリング
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant D as ダッシュボード
+    participant A as API
+    participant S as MCPサーバー
+    
+    U->>D: モニタリング開始
+    D->>A: 初期データ要求
+    A->>S: データ収集
+    S-->>A: データ返却
+    A-->>D: 初期表示
+    
+    loop 定期更新
+        A->>S: メトリクス収集
+        S-->>A: 最新データ
+        A-->>D: 表示更新
+    end
+    
+    U->>D: 表示設定変更
+    D->>D: 表示更新
+    
+    U->>D: アラート設定
+    D->>A: アラート登録
+    A-->>D: 設定完了
+```
+
+### 2. 詳細分析操作
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant D as ダッシュボード
+    participant A as 分析エンジン
+    participant DB as データストア
+    
+    U->>D: 詳細分析要求
+    D->>A: 分析開始
+    A->>DB: 履歴データ取得
+    DB-->>A: データ返却
+    
+    A->>A: データ分析
+    A-->>D: 分析結果表示
+    
+    U->>D: フィルター適用
+    D->>A: 再分析要求
+    A->>A: フィルター処理
+    A-->>D: 結果更新
+    
+    U->>D: レポート生成
+    D->>A: レポート作成
+    A-->>D: レポート表示
+```
